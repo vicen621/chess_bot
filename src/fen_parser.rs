@@ -1,7 +1,5 @@
 use crate::{
-    position::Position,
-    defs::{Castling, CastlingRights, Color, Piece, Square, Squares},
-    game_state::GameState,
+    defs::{Castling, CastlingRights, Color, Square}, game_state::GameState, pieces::Piece, position::Position
 };
 
 pub struct FenParser;
@@ -56,7 +54,7 @@ impl FenParser {
                     file_index += c.to_digit(10).unwrap() as usize;
                 } else {
                     let piece = Piece::from_char(c);
-                    let square = Squares::from_file_rank(file_index, rank_index);
+                    let square = Square::from_file_rank(file_index, rank_index);
                     position.add_piece(piece, square);
                     file_index += 1;
                 }
@@ -108,7 +106,7 @@ impl FenParser {
         if en_passant_fen == "-" {
             None
         } else {
-            Some(Squares::from_algebraic(en_passant_fen).to_index())
+            Some(Square::from_algebraic(en_passant_fen).to_index())
         }
     }
 }
@@ -131,10 +129,7 @@ mod tests {
             FenParser::parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
                 .unwrap();
 
-        assert_eq!(
-            position.get_all_pieces(),
-            0xFFFF_0000_0000_FFFF
-        );
+        assert_eq!(position.get_all_pieces(), 0xFFFF_0000_0000_FFFF);
         assert_eq!(position.get_side_to_move(), Color::White);
         assert_eq!(position.get_castling(), Castling::ANY_CASTLING);
         assert_eq!(position.get_halfmove_clock(), 0);

@@ -1,12 +1,9 @@
 use std::str::FromStr;
 
 use crate::{
-    defs::{Color, Piece, PieceType, Squares},
-    fen_parser::{FenError, FenParser},
-    game_state::GameState,
+    bitboard::{BitBoard, BitBoardMethods}, defs::{Color, Move, Square}, fen_parser::{FenError, FenParser}, game_state::GameState, pieces::{Piece, PieceType}
 };
 
-pub type BitBoard = u64;
 const MAX_MOVE_COUNT: usize = 1024;
 
 pub struct Position {
@@ -15,6 +12,9 @@ pub struct Position {
     by_color_bitboards: [BitBoard; 2],
     all_pieces_bitboard: BitBoard,
     state: GameState,
+
+    // move stack
+    moves: Vec<Move>,
 }
 
 impl Position {
@@ -24,13 +24,14 @@ impl Position {
             by_type_bitboards: [0; 6],
             by_color_bitboards: [0; 2],
             all_pieces_bitboard: 0,
+            moves: Vec::with_capacity(MAX_MOVE_COUNT),
             state,
         }
     }
 
-    pub fn add_piece(&mut self, piece: Piece, square: Squares) {
+    pub fn add_piece(&mut self, piece: Piece, square: Square) {
         let index = square.to_index();
-        let mask = 1 << index;
+        let mask = BitBoard::from_square(square);
 
         self.by_type_bitboards[piece.get_piece_type().to_index()] |= mask;
         self.by_color_bitboards[piece.get_color().to_index()] |= mask;
@@ -38,9 +39,9 @@ impl Position {
         self.board[index] = piece;
     }
 
-    pub fn remove_piece(&mut self, square: Squares) {
+    pub fn remove_piece(&mut self, square: Square) {
         let index = square.to_index();
-        let mask = !(1 << index);
+        let mask = BitBoard::from_square(square);
         let piece = self.board[index];
 
         self.by_type_bitboards[piece.get_piece_type().to_index()] ^= mask;
@@ -49,9 +50,9 @@ impl Position {
         self.board[index] = Piece::EMPTY;
     }
 
-    pub fn move_piece(&mut self, from: Squares, to: Squares) {
+    pub fn move_piece(&mut self, from: Square, to: Square) {
         let piece = self.board[from.to_index()];
-        let from_to: BitBoard = 1 << from.to_index() | 1 << to.to_index();
+        let from_to = BitBoard::from_square(from) | BitBoard::from_square(to);
 
         self.by_type_bitboards[piece.get_piece_type().to_index()] ^= from_to;
         self.by_color_bitboards[piece.get_color().to_index()] ^= from_to;
@@ -60,11 +61,17 @@ impl Position {
         self.board[to.to_index()] = piece;
     }
 
-    pub fn do_move(&mut self) {
+    pub fn generate_legal_moves(&self) -> Vec<Move> {
+        todo!();
+    }
+
+    pub fn do_move(&mut self, mv: Move) {
+        self.moves.push(mv);
         todo!();
     }
 
     pub fn undo_move(&mut self) {
+        let mv = self.moves.pop();
         todo!();
     }
 }
@@ -128,35 +135,20 @@ impl FromStr for Position {
 mod tests {
     use super::*;
 
-    fn print_bitboard(bitboard: BitBoard) {
-        for rank in (0..8).rev() {
-            for file in 0..8 {
-                let square = Squares::from_file_rank(file, rank);
-                let mask = 1 << square.to_index();
-                if bitboard & mask != 0 {
-                    print!("1 ");
-                } else {
-                    print!(". ");
-                }
-            }
-            println!();
-        }
-    }
-
     #[test]
     fn test_position() {
         let position = Position::default();
-        print_bitboard(position.get_all_pieces());
+        println!("{}", position.get_all_pieces().format());
         println!();
-        print_bitboard(position.get_pieces_color(Color::White));
+        println!("{}", position.get_pieces_color(Color::White).format());
         println!();
-        print_bitboard(position.get_pieces_color(Color::Black));
+        println!("{}", position.get_pieces_color(Color::Black).format());
         println!();
-        print_bitboard(position.get_pieces_type(PieceType::Pawn));
+        println!("{}", position.get_pieces_type(PieceType::Pawn).format());
         println!();
-        print_bitboard(position.get_pieces_color_type(Color::White, PieceType::Pawn));
+        println!("{}", position.get_pieces_color_type(Color::White, PieceType::Pawn).format());
         println!();
-        print_bitboard(position.get_pieces_color_type(Color::Black, PieceType::Pawn));
+        println!("{}", position.get_pieces_color_type(Color::Black, PieceType::Pawn).format());
         println!();
     }
 }
