@@ -1,4 +1,4 @@
-use crate::defs::{Castling, CastlingRights, Color, Square};
+use crate::defs::{Castling, CastlingRights, Color};
 
 // The game state is separated from the board because it is easier to serialize and deserialize.
 #[derive(Debug, Clone, Copy, PartialEq)]
