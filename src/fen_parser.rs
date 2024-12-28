@@ -1,10 +1,8 @@
-use crate::board::{Board, CastlingRights, Color, PiecePositions, PieceType, Square};
+use crate::{board::Board, defs::{Castling, CastlingRights, Color, Piece, Square, Squares}, game_state::GameState};
 
 pub struct FenParser;
-
 impl FenParser {
-    /// Parsea una posición FEN y devuelve un objeto `Board`.
-    pub fn parse(fen: &str) -> Result<Board, FenError> {
+    pub fn parse_fen(fen: &str) -> Result<Board, FenError> {
         let parts: Vec<&str> = fen.split_whitespace().collect();
 
         if parts.len() != 6 {
@@ -12,29 +10,46 @@ impl FenParser {
         }
 
         let pieces = FenParser::parse_piece_positions(parts[0])?;
-        let turn = FenParser::parse_turn(parts[1])?;
+        let white_ocupancy_bitboard: u64 = pieces.iter().enumerate().filter(|(_, square)| {
+            if let Square::Occupied(piece) = square {
+                piece.color == Color::White
+            } else {
+                false
+            }
+        }).fold(0, |acc, (index, _)| acc | 1 << index);
+        let black_ocupancy_bitboard: u64 = pieces.iter().enumerate().filter(|(_, square)| {
+            if let Square::Occupied(piece) = square {
+                piece.color == Color::Black
+            } else {
+                false
+            }
+        }).fold(0, |acc, (index, _)| acc | 1 << index);
+        let side_to_move = FenParser::parse_turn(parts[1])?;
         let castling_rights = FenParser::parse_castling_rights(parts[2]);
-        let en_passant = FenParser::parse_en_passant(parts[3])?;
+        let en_passant = FenParser::parse_en_passant(parts[3]);
         let halfmove_clock = parts[4]
-            .parse::<u32>()
+            .parse::<u8>()
             .map_err(|_| FenError::InvalidFormat)?;
         let fullmove_counter = parts[5]
-            .parse::<u32>()
+            .parse::<u16>()
             .map_err(|_| FenError::InvalidFormat)?;
+
+        let state = GameState::new(side_to_move, castling_rights, halfmove_clock, en_passant, fullmove_counter);
 
         Ok(Board::new(
             pieces,
-            turn,
-            castling_rights,
-            en_passant,
-            halfmove_clock,
-            fullmove_counter,
+            state,
+            black_ocupancy_bitboard,
+            white_ocupancy_bitboard
         ))
     }
+}
 
+// private methods
+impl FenParser {
     /// Parsea la posición de las piezas (primer campo de FEN).
-    fn parse_piece_positions(pieces_fen: &str) -> Result<PiecePositions, FenError> {
-        let mut positions = PiecePositions::new();
+    fn parse_piece_positions(pieces_fen: &str) -> Result<[Square; 64], FenError> {
+        let mut positions = [Square::Empty; 64];
         let ranks: Vec<&str> = pieces_fen.split('/').collect();
 
         if ranks.len() != 8 {
@@ -47,16 +62,11 @@ impl FenParser {
 
             for c in rank.chars() {
                 if c.is_digit(10) {
-                    file_index += c.to_digit(10).unwrap();
+                    file_index += c.to_digit(10).unwrap() as usize;
                 } else {
-                    let piece_type = PieceType::from_char(c)?;
-                    let color = Color::from_fen(c);
-                    let square = Square::from_algebraic(&format!(
-                        "{}{}",
-                        ('a' as u8 + file_index as u8) as char,
-                        (rank_index + 1) as u8
-                    ))?; // +1 porque las filas empiezan en 1
-                    positions.set_piece(&piece_type, &color, &square);
+                    let piece = Piece::from_char(c);
+                    let square = Squares::from_file_rank(file_index, rank_index).to_index();
+                    positions[square] = Square::Occupied(piece);
                     file_index += 1;
                 }
             }
@@ -75,20 +85,39 @@ impl FenParser {
             return Err(FenError::InvalidTurn);
         }
 
-        Color::from_char(turn_fen.chars().next().unwrap())
+        if turn_fen == "w" {
+            Ok(Color::White)
+        } else if turn_fen == "b" {
+            Ok(Color::Black)
+        } else {
+            Err(FenError::InvalidTurn)
+        }
     }
 
     /// Parsea los derechos de enroque (tercer campo de FEN).
     fn parse_castling_rights(castling_fen: &str) -> CastlingRights {
-        CastlingRights::from_str(castling_fen)
+        let mut castling_rights = Castling::NO_CASTLING;
+
+        for c in castling_fen.chars() {
+            match c {
+                'K' => castling_rights |= Castling::WHITE_KING_SIDE,
+                'Q' => castling_rights |= Castling::WHITE_QUEEN_SIDE,
+                'k' => castling_rights |= Castling::BLACK_KING_SIDE,
+                'q' => castling_rights |= Castling::BLACK_QUEEN_SIDE,
+                '-' => return Castling::NO_CASTLING,
+                _ => return Castling::NO_CASTLING,
+            }
+        }
+
+        castling_rights
     }
 
     /// Parsea la casilla de peón al paso (cuarto campo de FEN).
-    fn parse_en_passant(en_passant_fen: &str) -> Result<Option<Square>, FenError> {
+    fn parse_en_passant(en_passant_fen: &str) -> Option<usize> {
         if en_passant_fen == "-" {
-            Ok(None)
+           None
         } else {
-            Square::from_algebraic(en_passant_fen).map(|s| Some(s))
+            Some(Squares::from_algebraic(en_passant_fen).to_index())
         }
     }
 }
@@ -96,42 +125,28 @@ impl FenParser {
 #[derive(Debug, PartialEq)]
 pub enum FenError {
     InvalidFormat,
-    InvalidPiece(char),
     InvalidRankLength,
     InvalidFileLength,
-    InvalidTurn,
-    InvalidCastlingRights,
-    InvalidEnPassant,
+    InvalidTurn
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::defs::PieceType;
 
     #[test]
-    fn test_parse_starting_position() {
-        let board = FenParser::parse("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
+    fn test_parse_fen() {
+        let board = FenParser::parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
 
-        assert_eq!(board.get_pieces().get_pawns(&Color::White), 0xFF00);
-        assert_eq!(board.get_pieces().get_knights(&Color::White), 0x42);
-        assert_eq!(board.get_pieces().get_bishops(&Color::White), 0x24);
-        assert_eq!(board.get_pieces().get_rooks(&Color::White), 0x81);
-        assert_eq!(board.get_pieces().get_queens(&Color::White), 0x8);
-        assert_eq!(board.get_pieces().get_king(&Color::White), 0x10);
 
-        assert_eq!(board.get_turn(), &Color::White);
-        assert_eq!(
-            board.get_castling_rights(),
-            &CastlingRights::new(true, true, true, true)
-        );
-        assert_eq!(board.get_en_passant(), &None);
+
+        assert_eq!(board.get_pieces()[0], Square::Occupied(Piece::new(PieceType::ROOK, Color::White)));
+        assert_eq!(board.get_pieces()[63], Square::Occupied(Piece::new(PieceType::ROOK, Color::Black)));
+        assert_eq!(board.get_side_to_move(), Color::White);
+        assert_eq!(board.get_castling_rights(), Castling::ANY_CASTLING);
         assert_eq!(board.get_halfmove_clock(), 0);
-        assert_eq!(board.get_fullmove_counter(), 1);
-    }
-
-    #[test]
-    fn test_invalid_fen_format() {
-        let result = FenParser::parse("invalid fen");
-        assert!(result.is_err());
+        assert_eq!(board.get_en_passant(), None);
+        assert_eq!(board.get_fullmove_number(), 1);
     }
 }

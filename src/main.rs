@@ -1,6 +1,8 @@
-pub mod board;
-pub mod fen_parser;
+mod board;
+mod move_generator;
+mod game_state;
+mod defs;
+mod fen_parser;
 
 fn main() {
-
 }
