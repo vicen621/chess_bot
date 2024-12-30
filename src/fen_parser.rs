@@ -102,11 +102,11 @@ impl FenParser {
     }
 
     /// Parsea la casilla de peón al paso (cuarto campo de FEN).
-    fn parse_en_passant(en_passant_fen: &str) -> Option<usize> {
+    fn parse_en_passant(en_passant_fen: &str) -> Option<Square> {
         if en_passant_fen == "-" {
             None
         } else {
-            Some(Square::from_algebraic(en_passant_fen).to_index())
+            Some(Square::from_algebraic(en_passant_fen))
         }
     }
 }

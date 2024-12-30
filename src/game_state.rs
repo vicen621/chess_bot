@@ -1,4 +1,4 @@
-use crate::defs::{Castling, CastlingRights, Color};
+use crate::defs::{Castling, CastlingRights, Color, Square};
 
 // The game state is separated from the board because it is easier to serialize and deserialize.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -6,7 +6,7 @@ pub struct GameState {
     pub side_to_move: Color,
     pub castling: CastlingRights,
     pub halfmove_clock: u8,
-    pub en_passant: Option<usize>,
+    pub en_passant: Option<Square>,
     pub fullmove_number: u16,
 }
 
@@ -23,7 +23,7 @@ impl Default for GameState {
 }
 
 impl GameState {
-    pub fn new(side_to_move: Color, castling: CastlingRights, halfmove_clock: u8, en_passant: Option<usize>, fullmove_number: u16) -> Self {
+    pub fn new(side_to_move: Color, castling: CastlingRights, halfmove_clock: u8, en_passant: Option<Square>, fullmove_number: u16) -> Self {
         GameState {
             side_to_move,
             castling,

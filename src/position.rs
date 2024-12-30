@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use crate::{
-    bitboard::{BitBoard, BitBoardMethods}, defs::{Color, Move, Square}, fen_parser::{FenError, FenParser}, game_state::GameState, pieces::{Piece, PieceType}
+    bitboard::{BitBoard, BitBoardMethods}, chess_move::Move, defs::{Color, Square}, fen_parser::{FenError, FenParser}, game_state::GameState, pieces::{Piece, PieceType}
 };
 
 const MAX_MOVE_COUNT: usize = 1024;
@@ -90,7 +90,7 @@ impl Position {
         self.state.halfmove_clock
     }
 
-    pub fn get_en_passant(&self) -> Option<usize> {
+    pub fn get_en_passant(&self) -> Option<Square> {
         self.state.en_passant
     }
 

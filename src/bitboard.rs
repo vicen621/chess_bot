@@ -1,4 +1,4 @@
-use crate::defs::{Direction, Square};
+use crate::{chess_move::Direction, defs::Square};
 
 /// An empty bitboard.  It is sometimes useful to use !EMPTY to get the universe of squares.
 ///
@@ -10,13 +10,13 @@ use crate::defs::{Direction, Square};
 pub type BitBoard = u64;
 pub const EMPTY: BitBoard = 0;
 pub const RANK_1: BitBoard = 0x0000_0000_0000_00FF;
-pub const RANK_2: BitBoard = RANK_1 << 1;
-pub const RANK_3: BitBoard = RANK_1 << 2;
-pub const RANK_4: BitBoard = RANK_1 << 3;
-pub const RANK_5: BitBoard = RANK_1 << 4;
-pub const RANK_6: BitBoard = RANK_1 << 5;
-pub const RANK_7: BitBoard = RANK_1 << 6;
-pub const RANK_8: BitBoard = RANK_1 << 7;
+pub const RANK_2: BitBoard = RANK_1 << 8;
+pub const RANK_3: BitBoard = RANK_2 << 8;
+pub const RANK_4: BitBoard = RANK_3 << 8;
+pub const RANK_5: BitBoard = RANK_4 << 8;
+pub const RANK_6: BitBoard = RANK_5 << 8;
+pub const RANK_7: BitBoard = RANK_6 << 8;
+pub const RANK_8: BitBoard = RANK_7 << 8;
 
 pub const FILE_A: BitBoard =
     0b10000000_10000000_10000000_10000000_10000000_10000000_10000000_10000000;
@@ -99,12 +99,12 @@ impl BitBoardMethods for BitBoard {
         match direction {
             Direction::UP => self << 8,
             Direction::DOWN => self >> 8,
-            Direction::LEFT => (self & !FILE_H) << 1,
-            Direction::RIGHT => (self & !FILE_A) >> 1,
-            Direction::UP_RIGHT => (self & !FILE_A) << 7,
-            Direction::UP_LEFT => (self & !FILE_H) << 9,
-            Direction::DOWN_RIGHT => (self & !FILE_A) >> 9,
-            Direction::DOWN_LEFT => (self & !FILE_H) >> 7,
+            Direction::LEFT => (self & !FILE_A) << 1,
+            Direction::RIGHT => (self & !FILE_H) >> 1,
+            Direction::UP_LEFT => (self & !FILE_A) << 7,
+            Direction::UP_RIGHT => (self & !FILE_H) << 9,
+            Direction::DOWN_LEFT => (self & !FILE_A) >> 9,
+            Direction::DOWN_RIGHT => (self & !FILE_H) >> 7,
             i8::MIN..=0 => self >> -direction as u8,
             _ => self << direction as u8,
         }
@@ -185,5 +185,18 @@ mod tests {
         let bb = 0x0000_0000_0000_FF00;
         let bb_reversed = bb.reverse_colors();
         assert_eq!(bb_reversed, 0x00FF_0000_0000_0000);
+    }
+
+    #[test]
+    fn test_shift() {
+        let bb = 0x0000_0000_0100_0000;
+        assert_eq!(bb.shift(Direction::UP), 0x0000_0001_0000_0000);
+        assert_eq!(bb.shift(Direction::DOWN), 0x0000_0000_0001_0000);
+        assert_eq!(bb.shift(Direction::LEFT), 0x0000_0000_0200_0000);
+        assert_eq!(bb.shift(Direction::RIGHT), 0x0000_0000_0080_0000);
+        assert_eq!(bb.shift(Direction::UP_LEFT), 0x0000_0000_8000_0000);
+        assert_eq!(bb.shift(Direction::UP_RIGHT), 0x0000_0002_0000_0000);
+        assert_eq!(bb.shift(Direction::DOWN_LEFT), 0x0000_0000_0000_8000);
+        assert_eq!(bb.shift(Direction::DOWN_RIGHT), 0x0000_0000_0002_0000);
     }
 }
