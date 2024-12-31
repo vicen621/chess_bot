@@ -29,10 +29,10 @@ impl PawnMoves {
         let dirs = PawnDirections::new(position.get_side_to_move());
         let pawns = position.get_pieces_color_type(position.get_side_to_move(), PieceType::Pawn);
 
-        PawnMoves::generate_pawn_pushes(position, moves, &dirs, pawns);
+        PawnMoves::generate_pawn_promotions(position, moves, &dirs, pawns);
         PawnMoves::generate_pawn_captures(position, moves, &dirs, pawns);
         PawnMoves::generate_pawn_en_passant(position, moves, &dirs, pawns);
-        PawnMoves::generate_pawn_promotions(position, moves, &dirs, pawns);
+        PawnMoves::generate_pawn_pushes(position, moves, &dirs, pawns);
     }
 
     /// Generate all quiet pushes, defined as single and double pushes,
