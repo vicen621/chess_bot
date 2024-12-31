@@ -9,7 +9,7 @@ use crate::{chess_move::Direction, defs::Square};
 ///
 pub type BitBoard = u64;
 pub const EMPTY: BitBoard = 0;
-pub const RANK_1: BitBoard = 0x0000_0000_0000_00FF;
+pub const RANK_1: BitBoard = 0xFF;
 pub const RANK_2: BitBoard = RANK_1 << 8;
 pub const RANK_3: BitBoard = RANK_2 << 8;
 pub const RANK_4: BitBoard = RANK_3 << 8;
@@ -18,8 +18,7 @@ pub const RANK_6: BitBoard = RANK_5 << 8;
 pub const RANK_7: BitBoard = RANK_6 << 8;
 pub const RANK_8: BitBoard = RANK_7 << 8;
 
-pub const FILE_A: BitBoard =
-    0b10000000_10000000_10000000_10000000_10000000_10000000_10000000_10000000;
+pub const FILE_A: BitBoard = 0x0101_0101_0101_0101;
 pub const FILE_B: BitBoard = FILE_A << 1;
 pub const FILE_C: BitBoard = FILE_A << 2;
 pub const FILE_D: BitBoard = FILE_A << 3;
@@ -99,8 +98,8 @@ impl BitBoardMethods for BitBoard {
         match direction {
             Direction::UP => self << 8,
             Direction::DOWN => self >> 8,
-            Direction::LEFT => (self & !FILE_A) << 1,
-            Direction::RIGHT => (self & !FILE_H) >> 1,
+            Direction::LEFT => (self & !FILE_A) >> 1,
+            Direction::RIGHT => (self & !FILE_H) << 1,
             Direction::UP_LEFT => (self & !FILE_A) << 7,
             Direction::UP_RIGHT => (self & !FILE_H) << 9,
             Direction::DOWN_LEFT => (self & !FILE_A) >> 9,
@@ -189,14 +188,52 @@ mod tests {
 
     #[test]
     fn test_shift() {
-        let bb = 0x0000_0000_0100_0000;
-        assert_eq!(bb.shift(Direction::UP), 0x0000_0001_0000_0000);
-        assert_eq!(bb.shift(Direction::DOWN), 0x0000_0000_0001_0000);
-        assert_eq!(bb.shift(Direction::LEFT), 0x0000_0000_0200_0000);
-        assert_eq!(bb.shift(Direction::RIGHT), 0x0000_0000_0080_0000);
-        assert_eq!(bb.shift(Direction::UP_LEFT), 0x0000_0000_8000_0000);
-        assert_eq!(bb.shift(Direction::UP_RIGHT), 0x0000_0002_0000_0000);
-        assert_eq!(bb.shift(Direction::DOWN_LEFT), 0x0000_0000_0000_8000);
-        assert_eq!(bb.shift(Direction::DOWN_RIGHT), 0x0000_0000_0002_0000);
+        let bb = BitBoard::from_square(Square::B3);
+        assert_eq!(bb.shift(Direction::UP), BitBoard::from_square(Square::B4));
+        assert_eq!(bb.shift(Direction::DOWN), BitBoard::from_square(Square::B2));
+        assert_eq!(bb.shift(Direction::LEFT), BitBoard::from_square(Square::A3));
+        assert_eq!(bb.shift(Direction::RIGHT), BitBoard::from_square(Square::C3));
+        assert_eq!(bb.shift(Direction::UP_LEFT), BitBoard::from_square(Square::A4));
+        assert_eq!(bb.shift(Direction::UP_RIGHT), BitBoard::from_square(Square::C4));
+        assert_eq!(bb.shift(Direction::DOWN_LEFT), BitBoard::from_square(Square::A2));
+        assert_eq!(bb.shift(Direction::DOWN_RIGHT), BitBoard::from_square(Square::C2));
+    }
+
+    #[test]
+    fn test_shift_borders() {
+        let bb = BitBoard::from_square(Square::A8);
+        assert_eq!(bb.shift(Direction::UP), EMPTY);
+        assert_eq!(bb.shift(Direction::DOWN), BitBoard::from_square(Square::A7));
+        assert_eq!(bb.shift(Direction::LEFT), EMPTY);
+        assert_eq!(bb.shift(Direction::RIGHT), BitBoard::from_square(Square::B8));
+        assert_eq!(bb.shift(Direction::UP_LEFT), EMPTY);
+        assert_eq!(bb.shift(Direction::UP_RIGHT), EMPTY);
+        assert_eq!(bb.shift(Direction::DOWN_LEFT), EMPTY);
+        assert_eq!(bb.shift(Direction::DOWN_RIGHT), BitBoard::from_square(Square::B7));
+
+    }
+
+    #[test]
+    fn test_files_bb() {
+        assert_eq!(FILE_A, 0x0101_0101_0101_0101);
+        assert_eq!(FILE_B, 0x0202_0202_0202_0202);
+        assert_eq!(FILE_C, 0x0404_0404_0404_0404);
+        assert_eq!(FILE_D, 0x0808_0808_0808_0808);
+        assert_eq!(FILE_E, 0x1010_1010_1010_1010);
+        assert_eq!(FILE_F, 0x2020_2020_2020_2020);
+        assert_eq!(FILE_G, 0x4040_4040_4040_4040);
+        assert_eq!(FILE_H, 0x8080_8080_8080_8080);
+    }
+
+    #[test]
+    fn test_ranks_bb() {
+        assert_eq!(RANK_1, 0x0000_0000_0000_00FF);
+        assert_eq!(RANK_2, 0x0000_0000_0000_FF00);
+        assert_eq!(RANK_3, 0x0000_0000_00FF_0000);
+        assert_eq!(RANK_4, 0x0000_0000_FF00_0000);
+        assert_eq!(RANK_5, 0x0000_00FF_0000_0000);
+        assert_eq!(RANK_6, 0x0000_FF00_0000_0000);
+        assert_eq!(RANK_7, 0x00FF_0000_0000_0000);
+        assert_eq!(RANK_8, 0xFF00_0000_0000_0000);
     }
 }
