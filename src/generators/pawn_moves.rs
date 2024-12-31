@@ -151,6 +151,19 @@ mod tests {
     }
 
     #[test]
+    fn test_generate_pawn_moves_block_double_push() {
+        let position = Position::from_str("4k3/8/8/8/4p3/8/3PP3/4K3 w - - 0 1").ok().unwrap();
+
+        let dirs = PawnDirections::new(position.get_side_to_move());
+        let mut moves = vec![];
+        let pawns = position.get_pieces_color_type(position.get_side_to_move(), PieceType::Pawn);
+
+        PawnMoves::generate_pawn_pushes(&position, &mut moves, &dirs, pawns);
+        moves.iter().for_each(|f| println!("{}", f.to_uci()));
+        assert_eq!(moves.len(), 3);
+    }
+
+    #[test]
     fn test_generate_pawn_promotions() {
         let position = Position::from_str("8/P2PPP1P/8/8/8/8/8/2K2k2 w - - 0 1").ok().unwrap();
 

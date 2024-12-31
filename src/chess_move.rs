@@ -88,20 +88,6 @@ pub enum MoveType {
 }
 
 impl MoveType {
-    pub fn king_itr() -> Iter<'static, i8> {
-        static KING_MOVES: [i8; 8] = [
-            Direction::UP,
-            Direction::DOWN,
-            Direction::RIGHT,
-            Direction::LEFT,
-            Direction::UP_RIGHT,
-            Direction::UP_LEFT,
-            Direction::DOWN_RIGHT,
-            Direction::DOWN_LEFT,
-        ];
-        KING_MOVES.iter()
-    }
-
     pub fn promotion_itr() -> Iter<'static, MoveType> {
         static PROMOTIONS: [MoveType; 4] = [
             MoveType::KnightPromotion,
@@ -139,6 +125,20 @@ impl Direction {
     pub const UP_LEFT: i8 = Self::UP + Self::LEFT;
     pub const DOWN_RIGHT: i8 = Self::DOWN + Self::RIGHT;
     pub const DOWN_LEFT: i8 = Self::DOWN + Self::LEFT;
+
+    pub fn king_itr() -> Iter<'static, i8> {
+        static KING_MOVES: [i8; 8] = [
+            Direction::UP,
+            Direction::DOWN,
+            Direction::RIGHT,
+            Direction::LEFT,
+            Direction::UP_RIGHT,
+            Direction::UP_LEFT,
+            Direction::DOWN_RIGHT,
+            Direction::DOWN_LEFT,
+        ];
+        KING_MOVES.iter()
+    }
 }
 
 pub struct MoveExtractor;
