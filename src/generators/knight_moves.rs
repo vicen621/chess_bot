@@ -1,5 +1,9 @@
-use crate::{bitboard::{BitBoard, BitBoardMethods, EMPTY, FILE_A, FILE_B, FILE_G, FILE_H}, defs::Square};
+use crate::{bitboard::{BitBoard, BitBoardMethods, EMPTY, FILE_A, FILE_B, FILE_G, FILE_H}, chess_move::{Move, MoveExtractor, MoveType}, defs::Square, position::Position};
 
+// TODO: Ver como usar los movimientos pregenerados con todos los caballos a la vez
+// cuando a la posición le pido los caballos de color blanco me devuelve todos los caballos blancos en el tablero
+// pudiendo ser 1 o más caballos. Entonces necesito los movimientos de todos los caballos blancos a la vez.
+// READ: https://josherv.in/2021/03/19/chess-1/#:~:text=Sliding%20Piece%20Generation%3A%20Classical%20Approach
 struct KnightLookup {
     moves: [BitBoard; 64],
 }
