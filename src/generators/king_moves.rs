@@ -51,7 +51,7 @@ impl KingLookup {
 
         let king_captures = self.get_king_moves_bb(king) & captures;
 
-        MoveExtractor::extract_moves(king.to_square(), king_captures, moves, MoveType::Quiet);
+        MoveExtractor::extract_moves(king.to_square(), king_captures, moves, MoveType::Capture);
     }
 
     fn get_king_moves_bb(&self, bb: BitBoard) -> BitBoard {

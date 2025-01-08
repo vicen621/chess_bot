@@ -1,9 +1,5 @@
-use crate::{bitboard::{BitBoard, BitBoardMethods, EMPTY, FILE_A, FILE_B, FILE_G, FILE_H}, chess_move::{Move, MoveExtractor, MoveType}, defs::Square, position::Position};
+use crate::{bitboard::{BitBoard, BitBoardMethods, PieceItr, EMPTY, FILE_A, FILE_B, FILE_G, FILE_H}, chess_move::{Move, MoveExtractor, MoveType}, defs::Square, pieces::PieceType, position::Position};
 
-// TODO: Ver como usar los movimientos pregenerados con todos los caballos a la vez
-// cuando a la posición le pido los caballos de color blanco me devuelve todos los caballos blancos en el tablero
-// pudiendo ser 1 o más caballos. Entonces necesito los movimientos de todos los caballos blancos a la vez.
-// READ: https://josherv.in/2021/03/19/chess-1/#:~:text=Sliding%20Piece%20Generation%3A%20Classical%20Approach
 struct KnightLookup {
     moves: [BitBoard; 64],
 }
@@ -20,16 +16,39 @@ impl KnightLookup {
         Self { moves }
     }
 
-    pub fn get_knight_moves(&self, square: Square) -> BitBoard {
-        self.moves[square.to_index()]
-    }
+    pub fn generate_pseudo_legal_knight_moves(&self, position: &Position, moves: &mut Vec<Move>) {
+        let knights = position.get_pieces_color_type(position.get_side_to_move(), PieceType::Knight);
 
-    pub fn get_knight_moves_bb(&self, bb: BitBoard) -> BitBoard {
-        self.moves[bb.trailing_zeros() as usize]
+        for (knight,_) in knights.iter() {
+            self.generate_knight_attacks(position, moves, knight);
+            self.generate_knight_quiet_moves(position, moves, knight);
+        }
     }
 }
 
 impl KnightLookup {
+    fn generate_knight_attacks(&self, position: &Position, moves: &mut Vec<Move>, knight: Square) {
+        let color = position.get_side_to_move();
+        let their_king = position.get_pieces_color_type(!color, PieceType::King);
+        let captures = position.get_pieces_color(!color) & !their_king;
+
+        let knight_captures = self.get_knight_moves(knight) & captures;
+
+        MoveExtractor::extract_moves(knight, knight_captures, moves, MoveType::Capture);
+    }
+
+    fn generate_knight_quiet_moves(&self, position: &Position, moves: &mut Vec<Move>, knight: Square) {
+        let empty_squares = !position.get_all_pieces();
+
+        let quiet_moves = self.get_knight_moves(knight) & empty_squares;
+
+        MoveExtractor::extract_moves(knight, quiet_moves, moves, MoveType::Quiet);
+    }
+
+    fn get_knight_moves(&self, square: Square) -> BitBoard {
+        self.moves[square.to_index()]
+    }
+
     fn upUpRight(bb: BitBoard) -> BitBoard {
         (bb & !FILE_H) << 17
     }
@@ -69,6 +88,8 @@ impl KnightLookup {
 
 #[cfg(test)]
 mod tests {
+    use std::str::FromStr;
+
     use super::*;
 
     #[test]
@@ -81,12 +102,14 @@ mod tests {
     }
 
     #[test]
-    fn test_knight_lookup() {
-        let lookup = KnightLookup::new();
-        let bb = BitBoard::from_square(Square::A8);
-        let moves = lookup.get_knight_moves_bb(bb);
-        let expected = BitBoard::from_square(Square::B6) | BitBoard::from_square(Square::C7);
+    fn test_generate_pseudo_legal_knight_moves() {
+        let position = Position::from_str("8/8/8/8/8/8/3N4/8 w - - 0 1").ok().unwrap();
+        let mut moves = vec![];
 
-        assert_eq!(moves, expected);
+        let knight_lookup = KnightLookup::new();
+        knight_lookup.generate_pseudo_legal_knight_moves(&position, &mut moves);
+
+        moves.iter().for_each(|f| println!("{}", f.to_uci()));
+        assert_eq!(moves.len(), 6);
     }
 }
