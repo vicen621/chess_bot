@@ -1,6 +1,6 @@
-use crate::{bitboard::{BitBoard, BitBoardMethods, EMPTY}, chess_move::{Direction, Move, MoveExtractor, MoveType}, defs::Square, pieces::PieceType, position::Position};
+use crate::{bitboard::{BitBoard, BitBoardMethods, EMPTY}, chess_move::{Direction, Move, MoveExtractor, MoveType},  pieces::PieceType, position::Position};
 
-struct KingLookup {
+pub struct KingLookup {
     moves: [BitBoard; 64],
 }
 
@@ -9,7 +9,7 @@ impl KingLookup {
         let mut moves = [EMPTY; 64];
 
         for i in 0..64 {
-            let king = BitBoard::from_square(Square::from_index(i));
+            let king = BitBoard::from_index(i);
             moves[i] = Self::generate_king_moves(king);
         }
 

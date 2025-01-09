@@ -73,8 +73,8 @@ impl Square {
 
     pub fn to_algebraic(&self) -> String {
         let index = *self as u8;
-        let rank = index / 8;
-        let file = index % 8;
+        let rank = index >> 3;
+        let file = index & 7;
         let rank = (rank + b'1') as char;
         let file = (file + b'A') as char;
         format!("{}{}", file, rank)

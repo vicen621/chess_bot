@@ -60,20 +60,6 @@ impl Position {
         self.board[from.to_index()] = Piece::EMPTY;
         self.board[to.to_index()] = piece;
     }
-
-    pub fn generate_legal_moves(&self) -> Vec<Move> {
-        todo!();
-    }
-
-    pub fn do_move(&mut self, mv: Move) {
-        self.moves.push(mv);
-        todo!();
-    }
-
-    pub fn undo_move(&mut self) {
-        let mv = self.moves.pop();
-        todo!();
-    }
 }
 
 // getters

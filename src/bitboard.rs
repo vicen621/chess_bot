@@ -30,6 +30,7 @@ pub const FILE_H: BitBoard = FILE_A << 7;
 pub trait BitBoardMethods {
     fn set(file: usize, rank: usize) -> BitBoard;
     fn from_square(sq: Square) -> Self;
+    fn from_index(index: usize) -> Self;
     fn from_maybe_square(sq: Option<Square>) -> Option<BitBoard>;
     fn to_square(&self) -> Square;
     fn count(&self) -> u32;
@@ -43,6 +44,10 @@ impl BitBoardMethods for BitBoard {
     /// Construct a new `BitBoard` with a particular `Square` set
     fn set(file: usize, rank: usize) -> BitBoard {
         BitBoard::from_square(Square::from_file_rank(file, rank))
+    }
+
+    fn from_index(index: usize) -> BitBoard {
+        1u64 << index
     }
 
     /// Construct a new `BitBoard` with a particular `Square` set

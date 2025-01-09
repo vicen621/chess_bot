@@ -1,6 +1,6 @@
 use crate::{bitboard::{BitBoard, BitBoardMethods, PieceItr, EMPTY, FILE_A, FILE_B, FILE_G, FILE_H}, chess_move::{Move, MoveExtractor, MoveType}, defs::Square, pieces::PieceType, position::Position};
 
-struct KnightLookup {
+pub struct KnightLookup {
     moves: [BitBoard; 64],
 }
 
@@ -9,7 +9,7 @@ impl KnightLookup {
         let mut moves = [EMPTY; 64];
 
         for i in 0..64 {
-            let knight = BitBoard::from_square(Square::from_index(i));
+            let knight = BitBoard::from_index(i);
             moves[i] = Self::generate_knight_moves(knight);
         }
 
