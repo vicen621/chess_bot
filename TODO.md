@@ -1,4 +1,4 @@
 # TODO
 
-- Hacer los enroques
-- Generar movimientos legales
+- Castling
+- Divide board.rs in multiple files

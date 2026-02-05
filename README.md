@@ -1,1 +1,3 @@
-# chess_bot
+# ChessBotGM
+
+Summer project
