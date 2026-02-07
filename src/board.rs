@@ -10,7 +10,7 @@ impl Board {
         let mut board = Board {
             squares: [None; 64],
             turn: Color::White, // Default, lo sobreescribiremos leyendo el FEN
-            castling_rights: String::new(),
+            castling_rights: CastlingRights::default(), // Default, lo sobreescribiremos leyendo el FEN
             en_passant_target: None,
         };
         // rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
@@ -63,7 +63,7 @@ impl Board {
             _ => return Err("FEN inválido: turno desconocido".to_string()),
         };
 
-        board.castling_rights = parts[2].to_string();
+        board.castling_rights = CastlingRights::from_fen(parts[2]);
 
         if parts[3] != "-" {
             let file_char = parts[3].chars().next().unwrap();
@@ -198,6 +198,38 @@ impl Board {
                     _ => {
                         moves.push(Move::new(index, to_index));
                     }
+                }
+            }
+        }
+
+        // Usamos el helper para obtener el color enemigo
+        let opponent = self.turn.opposite();
+
+        if self.castling_rights.can_castle(self.turn, true) {
+            let f_sq = index + 1; // f1 o f8
+            let g_sq = index + 2; // g1 o g8
+
+            // 1. Vacías
+            if self.squares[f_sq].is_none() && self.squares[g_sq].is_none() {
+                // 2. No estoy en jaque ahora
+                if !self.is_square_attacked(index, opponent) {
+                    // 3. La casilla de paso (f) no está atacada
+                    if !self.is_square_attacked(f_sq, opponent) {
+                        // Nota: La casilla destino (g) la verificará el filtro general después
+                        moves.push(Move::new(index, g_sq));
+                    }
+                }
+            }
+        }
+
+        if self.castling_rights.can_castle(self.turn, false) {
+            let d_sq = index - 1; // d1 o d8
+            let c_sq = index - 2; // c1 o c8
+            let b_sq = index - 3; // b1 o b8 (debe estar vacío también)
+
+            if self.squares[d_sq].is_none() && self.squares[c_sq].is_none() && self.squares[b_sq].is_none() {
+                if !self.is_square_attacked(index, opponent) && !self.is_square_attacked(d_sq, opponent) {
+                    moves.push(Move::new(index, c_sq));
                 }
             }
         }
@@ -339,6 +371,24 @@ impl Board {
             self.squares[mv.to] = Some(piece);
         }
 
+        if PieceType::King == self.squares[mv.to].unwrap().piece_type {
+            // Si movemos el rey, perdemos ambos derechos de enroque
+            self.castling_rights.remove_castling_rights(self.turn, true);
+            self.castling_rights.remove_castling_rights(self.turn, false);
+        }
+
+         // Si movemos una torre desde su posición inicial, perdemos el derecho de enroque correspondiente
+        if PieceType::Rook == self.squares[mv.to].unwrap().piece_type {
+            let (_, from_file) = self.index_to_coord(mv.from);
+            if from_file == 0 {
+                // Torre de la columna 'a'
+                self.castling_rights.remove_castling_rights(self.turn, false);
+            } else if from_file == 7 {
+                // Torre de la columna 'h'
+                self.castling_rights.remove_castling_rights(self.turn, true);
+            }
+        }
+
         // Cambiar el turno
         self.turn = match self.turn {
             Color::White => Color::Black,
@@ -357,43 +407,116 @@ impl Board {
         None
     }
 
-    /// verifica si el rey del turno actual está en jaque
-    fn is_in_check(&self) -> bool {
-        let king_index = match self.find_king(self.turn) {
-            Some(index) => index,
-            None => return false, // No hay rey, no puede estar en jaque
-        };
-
-        let mut temp_board = self.clone();
-        temp_board.turn = match self.turn {
-            Color::White => Color::Black,
-            Color::Black => Color::White,
-        };
-
-        let opponent_moves = temp_board.generate_pseudo_moves();
-
-        for mv in opponent_moves {
-            if mv.to == king_index {
-                return true;
-            }
-        }
-
-        false
-    }
-
     fn is_king_attacked(&self, color: Color) -> bool {
         let king_pos = match self.find_king(color) {
             Some(p) => p,
             None => return false,
         };
 
-        // Generamos movimientos del turno actual (que es el enemigo del 'color')
-        let moves = self.generate_pseudo_moves();
-        for m in moves {
-            if m.to == king_pos {
-                return true;
+        // Usamos la nueva función que NO genera movimientos
+        let attacker = match color {
+            Color::White => Color::Black,
+            Color::Black => Color::White,
+        };
+
+        self.is_square_attacked(king_pos, attacker)
+    }
+
+    // Verifica si una casilla específica está siendo atacada por un color dado
+    pub fn is_square_attacked(&self, square: Square, attacker: Color) -> bool {
+        let (rank, file) = self.index_to_coord(square);
+
+        // 1. Verificamos PEONES (Cuidado: miramos "hacia atrás" desde la perspectiva del atacante)
+        let pawn_attack_rank = match attacker {
+            Color::White => rank as isize - 1, // Si ataca el blanco desde abajo, el peón está abajo
+            Color::Black => rank as isize + 1, // Si ataca el negro desde arriba, el peón está arriba
+        };
+
+        for &delta_file in &[-1, 1] {
+            let attack_file = file as isize + delta_file;
+            if pawn_attack_rank >= 0 && pawn_attack_rank < 8 && attack_file >= 0 && attack_file < 8 {
+                let idx = self.coord_to_index(pawn_attack_rank as usize, attack_file as usize);
+                if let Some(piece) = self.squares[idx] {
+                    if piece.color == attacker && piece.piece_type == PieceType::Pawn {
+                        return true;
+                    }
+                }
             }
         }
+
+        // 2. Verificamos CABALLOS
+        let knight_jumps = [(-2, -1), (-2, 1), (-1, -2), (-1, 2), (1, -2), (1, 2), (2, -1), (2, 1)];
+        for (delta_rank, delta_file) in knight_jumps {
+            let tr = rank as isize + delta_rank;
+            let tf = file as isize + delta_file;
+            if tr >= 0 && tr < 8 && tf >= 0 && tf < 8 {
+                let idx = self.coord_to_index(tr as usize, tf as usize);
+                if let Some(piece) = self.squares[idx] {
+                    if piece.color == attacker && piece.piece_type == PieceType::Knight {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        // 3. Verificamos REY (adyacente)
+        let king_moves = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)];
+        for (delta_rank, delta_file) in king_moves {
+             let tr = rank as isize + delta_rank;
+             let tf = file as isize + delta_file;
+             if tr >= 0 && tr < 8 && tf >= 0 && tf < 8 {
+                 let idx = self.coord_to_index(tr as usize, tf as usize);
+                 if let Some(piece) = self.squares[idx] {
+                     if piece.color == attacker && piece.piece_type == PieceType::King {
+                         return true;
+                     }
+                 }
+             }
+        }
+
+        // 4. Verificamos PIEZAS DESLIZANTES (Torre/Reina y Alfil/Reina)
+        // Ortogonales (Torre/Reina)
+        let straight_dirs = [(-1, 0), (1, 0), (0, -1), (0, 1)];
+        for (delta_rank, delta_file) in straight_dirs {
+            let mut tr = rank as isize + delta_rank;
+            let mut tf = file as isize + delta_file;
+            while tr >= 0 && tr < 8 && tf >= 0 && tf < 8 {
+                let idx = self.coord_to_index(tr as usize, tf as usize);
+                match self.squares[idx] {
+                    Some(piece) => {
+                        if piece.color == attacker && (piece.piece_type == PieceType::Rook || piece.piece_type == PieceType::Queen) {
+                            return true;
+                        }
+                        break; // Bloqueado por cualquier pieza
+                    },
+                    None => {} // Sigue buscando
+                }
+                tr += delta_rank;
+                tf += delta_file;
+            }
+        }
+
+        // Diagonales (Alfil/Reina)
+        let diag_dirs = [(-1, -1), (-1, 1), (1, -1), (1, 1)];
+        for (delta_rank, delta_file) in diag_dirs {
+            let mut tr = rank as isize + delta_rank;
+            let mut tf = file as isize + delta_file;
+            while tr >= 0 && tr < 8 && tf >= 0 && tf < 8 {
+                let idx = self.coord_to_index(tr as usize, tf as usize);
+                match self.squares[idx] {
+                    Some(piece) => {
+                        if piece.color == attacker && (piece.piece_type == PieceType::Bishop || piece.piece_type == PieceType::Queen) {
+                            return true;
+                        }
+                        break;
+                    },
+                    None => {}
+                }
+                tr += delta_rank;
+                tf += delta_file;
+            }
+        }
+
         false
     }
 
