@@ -1,8 +1,9 @@
+#[allow(dead_code)]
 mod board;
+#[allow(dead_code)]
 mod types;
 
 use std::{fs::OpenOptions, io::{self, BufRead, Write}};
-
 use crate::types::Board;
 
 fn main() {
@@ -133,4 +134,5 @@ fn log_to_file(msg: &str) {
 #[cfg(test)]
 mod tests {
     mod board_tests;
+    mod types_tests;
 }

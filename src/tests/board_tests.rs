@@ -312,20 +312,16 @@ fn test_perft_initial_position() {
     let board = Board::initial_position();
 
     // Profundidad 1: 20 movimientos posibles (16 peones + 4 caballos)
-    board.perft_divide(1);
     assert_eq!(board.perft(1), 20);
 
     // Profundidad 2: 400 movimientos posibles
-    board.perft_divide(2);
     assert_eq!(board.perft(2), 400);
 
     // Profundidad 3: 8,902 movimientos posibles
     // Aquí es donde suelen aparecer errores de clavadas o jaques sutiles
-    board.perft_divide(3);
     assert_eq!(board.perft(3), 8902);
 
     // Profundidad 4: 197,281. (Puede tardar un par de segundos en modo debug)
-    board.perft_divide(4);
     assert_eq!(board.perft(4), 197281);
 }
 
