@@ -521,3 +521,94 @@ fn test_castling_rights_lost_after_king_move() {
     assert!(!contains_move(&moves, "e1", "g1"), "Perdiste el derecho al mover el rey");
     assert!(!contains_move(&moves, "e1", "c1"), "Perdiste el derecho al mover el rey");
 }
+
+#[test]
+fn test_make_move_castling_moves_rook() {
+    // Enroque corto blanco
+    let mut board = Board::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQK2R w KQkq - 0 1").unwrap();
+
+    // Ejecutamos e1 -> g1
+    let castling_move = Move::new(square("e1"), square("g1"));
+    board.make_move(&castling_move);
+
+    // 1. El rey debe estar en g1
+    assert_eq!(board.get_at_square(square("g1")).unwrap().piece_type, PieceType::King);
+
+    // 2. LA TORRE debe haberse teletransportado de h1 a f1
+    assert!(board.get_at_square(square("h1")).is_none(), "La torre debe salir de h1");
+    assert_eq!(board.get_at_square(square("f1")).unwrap().piece_type, PieceType::Rook, "La torre debe aparecer en f1");
+}
+
+// --- TESTS DE ACTUALIZACIÓN DE DERECHOS (CASTLING RIGHTS) ---
+
+#[test]
+fn test_king_move_removes_both_rights() {
+    // 1. Empezamos con todos los derechos ("KQkq")
+    // FEN inicial estándar
+    let mut board = Board::initial_position();
+    assert_eq!(board.castling_rights, CastlingRights::new(true, true, true, true));
+
+    // 2. Movemos el Rey Blanco (e1 -> e2)
+    let move_king = Move::new(square("e1"), square("e2"));
+    board.make_move(&move_king);
+
+    // 3. El blanco debería haber perdido K y Q. El negro conserva k y q.
+    assert_eq!(board.castling_rights, CastlingRights::new(false, false, true, true), "Mover el rey blanco debe eliminar 'K' y 'Q'");
+
+    // 4. Movemos el Rey Negro (e8 -> e7)
+    let move_black_king = Move::new(square("e8"), square("e7"));
+    board.make_move(&move_black_king);
+
+    // 5. Ahora nadie debería tener derechos..
+    assert_eq!(board.castling_rights, CastlingRights::default(), "Mover el rey negro debe eliminar 'k' y 'q'");
+}
+
+#[test]
+fn test_rook_move_removes_specific_right() {
+    // 1. Empezamos con "KQkq"
+    let mut board = Board::initial_position();
+
+    // 2. Movemos la Torre Blanca del lado de Rey (h1 -> h2)
+    // Esto debería matar SOLO la 'K', manteniendo 'Q', 'k', 'q'.
+    let move_rook_h1 = Move::new(square("h1"), square("h2"));
+    board.make_move(&move_rook_h1);
+
+    assert_eq!(board.castling_rights, CastlingRights::new(false, true, true, true), "Mover torre h1 debe eliminar solo 'K'");
+
+    // 3. Movemos la Torre Negra del lado de Dama (a8 -> a7)
+    // Turno negro (se hace un movimiento dummy blanco para cambiar turno o forzamos el turno si es necesario,
+    // pero make_move cambia el turno automático, así que:
+    // Turno 1 (Blanco): h1->h2.
+    // Turno 2 (Negro): a8->a7.
+    let move_rook_a8 = Move::new(square("a8"), square("a7"));
+    board.make_move(&move_rook_a8);
+
+    // Debería quedar "Qk" (Se fue 'K' antes, ahora se va 'q').
+    assert_eq!(board.castling_rights, CastlingRights::new(false, true, true, false), "Mover torre a8 debe eliminar solo 'q'");
+}
+
+#[test]
+fn test_rook_capture_removes_opponent_right() {
+    // ESTE ES EL CASO DIFÍCIL
+    // Situación: Torre negra en h2 lista para comerse a la torre blanca de h1.
+    // Derechos iniciales: "KQkq".
+    // FEN: r3k2r/7r/8/8/8/8/7P/R3K2R b KQkq - 0 1
+    // (Juegan negras)
+    let mut board = Board::from_fen("r3k2r/7r/8/8/8/8/7P/R3K2R b KQkq - 0 1").unwrap();
+
+    // Verificamos que el blanco tiene derecho 'K'
+    assert!(board.castling_rights.white_kingside);
+
+    // Las negras capturan la torre de h1 (h2 -> h1)
+    let capture_move = Move::new(square("h2"), square("h1"));
+    board.make_move(&capture_move);
+
+    // EL BLANCO DEBE PERDER EL DERECHO 'K' AUNQUE NO HAYA MOVIDO SU TORRE
+    // (Porque ya no tiene torre en h1 para enrocar)
+    assert!(!board.castling_rights.white_kingside, "Si te comen la torre de h1, pierdes el derecho 'K'");
+
+    // Los otros derechos deben seguir intactos
+    assert!(board.castling_rights.white_queenside);
+    assert!(board.castling_rights.black_kingside);
+    assert!(board.castling_rights.black_queenside);
+}

@@ -363,22 +363,27 @@ impl Board {
             }
         }
 
-        // si el movimiento es una promoción, colocar la pieza promovida, sino mover la pieza normalmente
-        if mv.promotion.is_some() {
-            let promo_piece = Piece::new(piece.color, mv.promotion.unwrap());
-            self.squares[mv.to] = Some(promo_piece);
-        } else {
-            self.squares[mv.to] = Some(piece);
-        }
-
-        if PieceType::King == self.squares[mv.to].unwrap().piece_type {
-            // Si movemos el rey, perdemos ambos derechos de enroque
+        // Si movemos el rey, perdemos ambos derechos de enroque
+        if PieceType::King == piece.piece_type {
             self.castling_rights.remove_castling_rights(self.turn, true);
             self.castling_rights.remove_castling_rights(self.turn, false);
+            let (to_rank, to_file) = self.index_to_coord(mv.to);
+
+            if to_file == 6 {
+                // Enroque corto
+                let rook_from = self.coord_to_index(to_rank, 7);
+                let rook_to = self.coord_to_index(to_rank, 5);
+                self.squares[rook_to] = self.squares[rook_from].take();
+            } else if to_file == 2 {
+                // Enroque largo
+                let rook_from = self.coord_to_index(to_rank, 0);
+                let rook_to = self.coord_to_index(to_rank, 3);
+                self.squares[rook_to] = self.squares[rook_from].take();
+            }
         }
 
-         // Si movemos una torre desde su posición inicial, perdemos el derecho de enroque correspondiente
-        if PieceType::Rook == self.squares[mv.to].unwrap().piece_type {
+        // Si movemos una torre desde su posición inicial, perdemos el derecho de enroque correspondiente
+        if PieceType::Rook == piece.piece_type {
             let (_, from_file) = self.index_to_coord(mv.from);
             if from_file == 0 {
                 // Torre de la columna 'a'
@@ -387,6 +392,28 @@ impl Board {
                 // Torre de la columna 'h'
                 self.castling_rights.remove_castling_rights(self.turn, true);
             }
+        }
+
+        // Si capturamos una torre en su posición inicial, el oponente pierde el derecho de enroque correspondiente
+        if let Some(captured_piece) = self.squares[mv.to] {
+            if captured_piece.piece_type == PieceType::Rook {
+                let (_, to_file) = self.index_to_coord(mv.to);
+                if to_file == 0 {
+                    // Torre de la columna 'a'
+                    self.castling_rights.remove_castling_rights(captured_piece.color, false);
+                } else if to_file == 7 {
+                    // Torre de la columna 'h'
+                    self.castling_rights.remove_castling_rights(captured_piece.color, true);
+                }
+            }
+        }
+
+        // Mover la pieza (y manejar promoción si aplica)
+        if mv.promotion.is_some() {
+            let promo_piece = Piece::new(piece.color, mv.promotion.unwrap());
+            self.squares[mv.to] = Some(promo_piece);
+        } else {
+            self.squares[mv.to] = Some(piece);
         }
 
         // Cambiar el turno
