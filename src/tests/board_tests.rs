@@ -612,3 +612,177 @@ fn test_rook_capture_removes_opponent_right() {
     assert!(board.castling_rights.black_kingside);
     assert!(board.castling_rights.black_queenside);
 }
+
+// --- TESTS DE PARSING UCI (Protocolo) ---
+
+#[test]
+fn test_uci_parse_valid_move() {
+    let board = Board::initial_position();
+
+    // Caso simple: Peón de rey
+    let move_str = "e2e4";
+    let m = board.parse_move(move_str).expect("Debería parsear e2e4 correctamente");
+
+    // Verificamos índices
+    // e2 es 12, e4 es 28
+    assert_eq!(m.from, square("e2"));
+    assert_eq!(m.to, square("e4"));
+    assert!(m.promotion.is_none());
+}
+
+#[test]
+fn test_uci_parse_invalid_move_logic() {
+    let board = Board::initial_position();
+
+    // Sintaxis válida ("a1a8"), pero movimiento ILEGAL (Torre bloqueada)
+    // parse_move DEBE devolver None
+    let move_str = "a1a8";
+    assert!(board.parse_move(move_str).is_none(), "No debería aceptar movimientos ilegales aunque el texto sea válido");
+}
+
+#[test]
+fn test_uci_parse_garbage_input() {
+    let board = Board::initial_position();
+
+    assert!(board.parse_move("e2e5").is_none()); // Ilegal (peón salta 3)
+    assert!(board.parse_move("perro").is_none()); // Basura
+    assert!(board.parse_move("").is_none());      // Vacío
+    assert!(board.parse_move("e2e").is_none());   // Incompleto
+}
+
+#[test]
+fn test_uci_parse_promotion() {
+    // FEN: Peón blanco en a7 a punto de coronar
+    let board = Board::from_fen("8/P7/8/8/8/8/8/8 w - - 0 1").unwrap();
+
+    // Caso 1: Coronación a Reina ("q")
+    let m_queen = board.parse_move("a7a8q").expect("Debería parsear a7a8q");
+    assert_eq!(m_queen.promotion, Some(PieceType::Queen));
+
+    // Caso 2: Coronación a Caballo ("n")
+    let m_knight = board.parse_move("a7a8n").expect("Debería parsear a7a8n");
+    assert_eq!(m_knight.promotion, Some(PieceType::Knight));
+
+    // Caso 3: Sin especificar pieza de promoción (UCI inválido para promoción)
+    assert!(board.parse_move("a7a8").is_none(), "UCI requiere letra de promoción");
+}
+
+#[test]
+fn test_uci_parse_castling_notation() {
+    // FEN: Posición lista para enroque corto blanco
+    let board = Board::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQK2R w KQkq - 0 1").unwrap();
+
+    let m = board.parse_move("e1g1").expect("Debería entender e1g1 como enroque");
+
+    assert_eq!(m.from, square("e1"));
+    assert_eq!(m.to, square("g1"));
+}
+
+#[test]
+fn test_uci_position_sequence() {
+    // Vamos a simular la Apertura Italiana:
+    // 1. e4 e5 2. Nf3 Nc6 3. Bc4
+    let moves_to_play = ["e2e4", "e7e5", "g1f3", "b8c6", "f1c4"];
+
+    let mut board = Board::initial_position();
+
+    for move_str in moves_to_play {
+        // 1. Parseamos
+        let m = board.parse_move(move_str)
+            .unwrap_or_else(|| panic!("Falló al parsear el movimiento: {}", move_str));
+
+        // 2. Aplicamos
+        board.make_move(&m);
+    }
+
+    // Verificaciones finales del estado del tablero:
+
+    // A. Turno debe ser Negro (jugaron 5 movimientos, le toca al 6to)
+    assert_eq!(board.turn, Color::Black);
+
+    // B. El alfil blanco debe estar en c4
+    let bishop = board.get_at_square(square("c4")).expect("Debería haber un alfil en c4");
+    assert_eq!(bishop.piece_type, PieceType::Bishop);
+    assert_eq!(bishop.color, Color::White);
+
+    // C. El caballo negro debe estar en c6
+    let knight = board.get_at_square(square("c6")).expect("Debería haber un caballo en c6");
+    assert_eq!(knight.piece_type, PieceType::Knight);
+}
+
+#[test]
+fn test_coord_to_algebraic_output() {
+    // Casos borde
+    assert_eq!(Board::index_to_coord_algebraic(square("a1")), "a1");
+    assert_eq!(Board::index_to_coord_algebraic(square("h8")), "h8");
+    assert_eq!(Board::index_to_coord_algebraic(square("e4")), "e4");
+}
+
+// --- TESTS DE FEN (to_fen) ---
+
+#[test]
+fn test_to_fen_initial_position() {
+    let board = Board::initial_position();
+    let fen = board.to_fen();
+
+    // El FEN estándar inicial
+    let expected = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    assert_eq!(fen, expected, "El FEN inicial no coincide");
+}
+
+#[test]
+fn test_to_fen_round_trip_complex() {
+    // "Kiwipete" (una posición famosa de testeo con muchas piezas y huecos)
+    // Nota: Asegúrate de usar " 0 1" al final si tu motor no trackea contadores,
+    // o ajusta este string a lo que tu motor soporte.
+    let original_fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1";
+
+    let board = Board::from_fen(original_fen).expect("Debería parsear el FEN complejo");
+    let generated_fen = board.to_fen();
+
+    assert_eq!(generated_fen, original_fen, "El ciclo FEN -> Board -> FEN falló en posición compleja");
+}
+
+#[test]
+fn test_to_fen_castling_rights() {
+    // Caso 1: Sin enroques
+    let fen_no_castle = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1";
+    let board = Board::from_fen(fen_no_castle).unwrap();
+    assert_eq!(board.to_fen(), fen_no_castle);
+
+    // Caso 2: Enroques parciales (Rey blanco y Dama negra)
+    let fen_partial = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w Kq - 0 1";
+    let board = Board::from_fen(fen_partial).unwrap();
+    assert_eq!(board.to_fen(), fen_partial);
+}
+
+#[test]
+fn test_to_fen_en_passant() {
+    // Posición con objetivo de captura al paso en e3
+    let fen_ep = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1";
+    let board = Board::from_fen(fen_ep).unwrap();
+
+    // Verificamos que se haya guardado bien internamente primero
+    assert_eq!(board.en_passant_target, Some(20)); // e3 es índice 20
+
+    // Verificamos que se genere bien el string
+    assert_eq!(board.to_fen(), fen_ep);
+}
+
+#[test]
+fn test_to_fen_turn() {
+    // Turno de las negras
+    let fen_black = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1";
+    let board = Board::from_fen(fen_black).unwrap();
+    assert_eq!(board.turn, Color::Black);
+    assert_eq!(board.to_fen(), fen_black);
+}
+
+#[test]
+fn test_to_fen_empty_squares() {
+    // Tablero casi vacío (solo reyes) para probar los números (saltos)
+    // 8/8/8/4k3/8/8/3K4/8 w - - 0 1
+    let fen_empty = "8/8/8/4k3/8/8/3K4/8 w - - 0 1";
+    let board = Board::from_fen(fen_empty).unwrap();
+    assert_eq!(board.to_fen(), fen_empty);
+}

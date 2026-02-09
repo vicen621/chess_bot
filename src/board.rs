@@ -76,6 +76,74 @@ impl Board {
         Ok(board)
     }
 
+    pub fn to_fen(&self) -> String {
+        let mut fen = String::new();
+
+        for rank in (0..8).rev() {
+            let mut empty_count = 0;
+            for file in 0..8 {
+                let index = rank * 8 + file;
+                if let Some(piece) = self.squares[index] {
+                    if empty_count > 0 {
+                        fen.push_str(&empty_count.to_string());
+                        empty_count = 0;
+                    }
+                    let c = match piece.piece_type {
+                        PieceType::Pawn => 'p',
+                        PieceType::Knight => 'n',
+                        PieceType::Bishop => 'b',
+                        PieceType::Rook => 'r',
+                        PieceType::Queen => 'q',
+                        PieceType::King => 'k',
+                    };
+                    fen.push(if piece.color == Color::White { c.to_ascii_uppercase() } else { c });
+                } else {
+                    empty_count += 1;
+                }
+            }
+            if empty_count > 0 {
+                fen.push_str(&empty_count.to_string());
+            }
+            if rank > 0 {
+                fen.push('/');
+            }
+        }
+
+        fen.push(' ');
+        fen.push(if self.turn == Color::White { 'w' } else { 'b' });
+        fen.push(' ');
+
+        let mut castling = String::new();
+        if self.castling_rights.white_kingside {
+            castling.push('K');
+        }
+        if self.castling_rights.white_queenside {
+            castling.push('Q');
+        }
+        if self.castling_rights.black_kingside {
+            castling.push('k');
+        }
+        if self.castling_rights.black_queenside {
+            castling.push('q');
+        }
+        if castling.is_empty() {
+            castling.push('-');
+        }
+        fen.push_str(&castling);
+        fen.push(' ');
+
+        if let Some(ep) = self.en_passant_target {
+            fen.push_str(&Board::index_to_coord_algebraic(ep));
+        } else {
+            fen.push('-');
+        }
+
+        // For simplicity, we won't handle halfmove clock and fullmove number here
+        fen.push_str(" 0 1");
+
+        fen
+    }
+
     pub fn generate_moves(&self) -> Vec<Move> {
         let pseudo_moves = self.generate_pseudo_moves();
         pseudo_moves
@@ -335,10 +403,11 @@ impl Board {
 
     pub fn make_move(&mut self, mv: &Move) {
         let piece = self.squares[mv.from].take().unwrap();
+        let (from_rank, from_file) = self.index_to_coord(mv.from); // Necesitamos el origen
+        let (to_rank, to_file) = self.index_to_coord(mv.to);
 
         // Captura al paso
         if piece.piece_type == PieceType::Pawn && mv.to == self.en_passant_target.unwrap_or(64) {
-            let (to_rank, to_file) = self.index_to_coord(mv.to);
             let captured_pawn_rank = match self.turn {
                 Color::White => to_rank - 1,
                 Color::Black => to_rank + 1,
@@ -351,14 +420,12 @@ impl Board {
 
         // si el movimiento es un doble avance de peón, establecer el objetivo al paso
         if piece.piece_type == PieceType::Pawn {
-            let (from_rank, _) = self.index_to_coord(mv.from);
-            let (to_rank, _) = self.index_to_coord(mv.to);
             if (piece.color == Color::White && from_rank == 1 && to_rank == 3)
                 || (piece.color == Color::Black && from_rank == 6 && to_rank == 4)
             {
                 // Movimiento doble de peón
                 let ep_rank = (from_rank + to_rank) / 2;
-                let ep_file = mv.to % 8;
+                let ep_file = from_file;
                 self.en_passant_target = Some(self.coord_to_index(ep_rank, ep_file));
             }
         }
@@ -367,24 +434,26 @@ impl Board {
         if PieceType::King == piece.piece_type {
             self.castling_rights.remove_castling_rights(self.turn, true);
             self.castling_rights.remove_castling_rights(self.turn, false);
-            let (to_rank, to_file) = self.index_to_coord(mv.to);
 
-            if to_file == 6 {
-                // Enroque corto
-                let rook_from = self.coord_to_index(to_rank, 7);
-                let rook_to = self.coord_to_index(to_rank, 5);
-                self.squares[rook_to] = self.squares[rook_from].take();
-            } else if to_file == 2 {
-                // Enroque largo
-                let rook_from = self.coord_to_index(to_rank, 0);
-                let rook_to = self.coord_to_index(to_rank, 3);
-                self.squares[rook_to] = self.squares[rook_from].take();
+            let delta_x = (to_file as i8 - from_file as i8).abs();
+
+            if delta_x == 2 {
+                if to_file == 6 {
+                    // Enroque corto
+                    let rook_from = self.coord_to_index(to_rank, 7);
+                    let rook_to = self.coord_to_index(to_rank, 5);
+                    self.squares[rook_to] = self.squares[rook_from].take();
+                } else if to_file == 2 {
+                    // Enroque largo
+                    let rook_from = self.coord_to_index(to_rank, 0);
+                    let rook_to = self.coord_to_index(to_rank, 3);
+                    self.squares[rook_to] = self.squares[rook_from].take();
+                }
             }
         }
 
         // Si movemos una torre desde su posición inicial, perdemos el derecho de enroque correspondiente
         if PieceType::Rook == piece.piece_type {
-            let (_, from_file) = self.index_to_coord(mv.from);
             if from_file == 0 {
                 // Torre de la columna 'a'
                 self.castling_rights.remove_castling_rights(self.turn, false);
@@ -397,7 +466,6 @@ impl Board {
         // Si capturamos una torre en su posición inicial, el oponente pierde el derecho de enroque correspondiente
         if let Some(captured_piece) = self.squares[mv.to] {
             if captured_piece.piece_type == PieceType::Rook {
-                let (_, to_file) = self.index_to_coord(mv.to);
                 if to_file == 0 {
                     // Torre de la columna 'a'
                     self.castling_rights.remove_castling_rights(captured_piece.color, false);
@@ -545,6 +613,61 @@ impl Board {
         }
 
         false
+    }
+
+    fn parse_move_string(&self, move_str: &str) -> Option<Move> {
+        let bytes = move_str.as_bytes();
+        if bytes.len() < 4 { return None; }
+
+        let from_file = (bytes[0] as char).to_ascii_lowercase() as u8;
+        let from_rank = bytes[1];
+        let to_file = (bytes[2] as char).to_ascii_lowercase() as u8;
+        let to_rank = bytes[3];
+
+        let f_f = from_file.wrapping_sub(b'a') as usize;
+        let f_r = from_rank.wrapping_sub(b'1') as usize;
+        let t_f = to_file.wrapping_sub(b'a') as usize;
+        let t_r = to_rank.wrapping_sub(b'1') as usize;
+
+        if f_f >= 8 || f_r >= 8 || t_f >= 8 || t_r >= 8 {
+            return None;
+        }
+
+        let from = self.coord_to_index(f_r, f_f);
+        let to = self.coord_to_index(t_r, t_f);
+
+        let promotion = if bytes.len() == 5 {
+            match (bytes[4] as char).to_ascii_lowercase() {
+                'q' => Some(PieceType::Queen),
+                'r' => Some(PieceType::Rook),
+                'b' => Some(PieceType::Bishop),
+                'n' => Some(PieceType::Knight),
+                _ => return None,
+            }
+        } else {
+            None
+        };
+
+        let mut m = Move::new(from, to);
+        m.promotion = promotion;
+        Some(m)
+    }
+
+    pub fn parse_move(&self, move_str: &str) -> Option<Move> {
+        let parsed_move = self.parse_move_string(move_str)?;
+
+        let legal_moves = self.generate_moves();
+
+        for legal_move in legal_moves {
+            if legal_move.from == parsed_move.from
+               && legal_move.to == parsed_move.to
+               && legal_move.promotion == parsed_move.promotion
+            {
+                return Some(legal_move);
+            }
+        }
+
+        None
     }
 
     pub fn coord_to_index(&self, rank: Square, file: Square) -> Square {
