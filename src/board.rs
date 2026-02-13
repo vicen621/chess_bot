@@ -96,7 +96,11 @@ impl Board {
                         PieceType::Queen => 'q',
                         PieceType::King => 'k',
                     };
-                    fen.push(if piece.color == Color::White { c.to_ascii_uppercase() } else { c });
+                    fen.push(if piece.color == Color::White {
+                        c.to_ascii_uppercase()
+                    } else {
+                        c
+                    });
                 } else {
                     empty_count += 1;
                 }
@@ -295,8 +299,13 @@ impl Board {
             let c_sq = index - 2; // c1 o c8
             let b_sq = index - 3; // b1 o b8 (debe estar vacío también)
 
-            if self.squares[d_sq].is_none() && self.squares[c_sq].is_none() && self.squares[b_sq].is_none() {
-                if !self.is_square_attacked(index, opponent) && !self.is_square_attacked(d_sq, opponent) {
+            if self.squares[d_sq].is_none()
+                && self.squares[c_sq].is_none()
+                && self.squares[b_sq].is_none()
+            {
+                if !self.is_square_attacked(index, opponent)
+                    && !self.is_square_attacked(d_sq, opponent)
+                {
                     moves.push(Move::new(index, c_sq));
                 }
             }
@@ -352,7 +361,12 @@ impl Board {
                 if self.squares[forward_index].is_none() {
                     if forward_rank as Square == promotion_rank {
                         // Promoción sin captura
-                        for &promo_piece in &[PieceType::Queen, PieceType::Rook, PieceType::Bishop, PieceType::Knight] {
+                        for &promo_piece in &[
+                            PieceType::Queen,
+                            PieceType::Rook,
+                            PieceType::Bishop,
+                            PieceType::Knight,
+                        ] {
                             moves.push(Move::with_promotion(index, forward_index, promo_piece));
                         }
                     } else {
@@ -364,9 +378,10 @@ impl Board {
             // Movimiento doble desde la posición inicial
             if rank == start_rank {
                 let double_forward_rank = rank as isize + 2 * direction;
-                let double_forward_index =
-                    self.coord_to_index(double_forward_rank as Square, file);
-                if self.squares[double_forward_index].is_none() && self.squares[self.coord_to_index(forward_rank as Square, file)].is_none() {
+                let double_forward_index = self.coord_to_index(double_forward_rank as Square, file);
+                if self.squares[double_forward_index].is_none()
+                    && self.squares[self.coord_to_index(forward_rank as Square, file)].is_none()
+                {
                     moves.push(Move::new(index, double_forward_index));
                 }
             }
@@ -377,13 +392,23 @@ impl Board {
                 if capture_file >= 0 && capture_file < 8 {
                     let capture_rank = rank as isize + direction;
                     if capture_rank >= 0 && capture_rank < 8 {
-                        let capture_index = self.coord_to_index(capture_rank as Square, capture_file as Square);
+                        let capture_index =
+                            self.coord_to_index(capture_rank as Square, capture_file as Square);
                         if let Some(target_piece) = self.squares[capture_index] {
                             if target_piece.color != piece.color {
                                 if capture_rank as Square == promotion_rank {
                                     // Promoción con captura
-                                    for &promo_piece in &[PieceType::Queen, PieceType::Rook, PieceType::Bishop, PieceType::Knight] {
-                                        moves.push(Move::with_promotion(index, capture_index, promo_piece));
+                                    for &promo_piece in &[
+                                        PieceType::Queen,
+                                        PieceType::Rook,
+                                        PieceType::Bishop,
+                                        PieceType::Knight,
+                                    ] {
+                                        moves.push(Move::with_promotion(
+                                            index,
+                                            capture_index,
+                                            promo_piece,
+                                        ));
                                     }
                                 } else {
                                     moves.push(Move::new(index, capture_index));
@@ -433,7 +458,8 @@ impl Board {
         // Si movemos el rey, perdemos ambos derechos de enroque
         if PieceType::King == piece.piece_type {
             self.castling_rights.remove_castling_rights(self.turn, true);
-            self.castling_rights.remove_castling_rights(self.turn, false);
+            self.castling_rights
+                .remove_castling_rights(self.turn, false);
 
             let delta_x = (to_file as i8 - from_file as i8).abs();
 
@@ -456,7 +482,8 @@ impl Board {
         if PieceType::Rook == piece.piece_type {
             if from_file == 0 {
                 // Torre de la columna 'a'
-                self.castling_rights.remove_castling_rights(self.turn, false);
+                self.castling_rights
+                    .remove_castling_rights(self.turn, false);
             } else if from_file == 7 {
                 // Torre de la columna 'h'
                 self.castling_rights.remove_castling_rights(self.turn, true);
@@ -468,10 +495,12 @@ impl Board {
             if captured_piece.piece_type == PieceType::Rook {
                 if to_file == 0 {
                     // Torre de la columna 'a'
-                    self.castling_rights.remove_castling_rights(captured_piece.color, false);
+                    self.castling_rights
+                        .remove_castling_rights(captured_piece.color, false);
                 } else if to_file == 7 {
                     // Torre de la columna 'h'
-                    self.castling_rights.remove_castling_rights(captured_piece.color, true);
+                    self.castling_rights
+                        .remove_castling_rights(captured_piece.color, true);
                 }
             }
         }
@@ -502,7 +531,7 @@ impl Board {
         None
     }
 
-    fn is_king_attacked(&self, color: Color) -> bool {
+    pub fn is_king_attacked(&self, color: Color) -> bool {
         let king_pos = match self.find_king(color) {
             Some(p) => p,
             None => return false,
@@ -529,7 +558,8 @@ impl Board {
 
         for &delta_file in &[-1, 1] {
             let attack_file = file as isize + delta_file;
-            if pawn_attack_rank >= 0 && pawn_attack_rank < 8 && attack_file >= 0 && attack_file < 8 {
+            if pawn_attack_rank >= 0 && pawn_attack_rank < 8 && attack_file >= 0 && attack_file < 8
+            {
                 let idx = self.coord_to_index(pawn_attack_rank as usize, attack_file as usize);
                 if let Some(piece) = self.squares[idx] {
                     if piece.color == attacker && piece.piece_type == PieceType::Pawn {
@@ -540,7 +570,16 @@ impl Board {
         }
 
         // 2. Verificamos CABALLOS
-        let knight_jumps = [(-2, -1), (-2, 1), (-1, -2), (-1, 2), (1, -2), (1, 2), (2, -1), (2, 1)];
+        let knight_jumps = [
+            (-2, -1),
+            (-2, 1),
+            (-1, -2),
+            (-1, 2),
+            (1, -2),
+            (1, 2),
+            (2, -1),
+            (2, 1),
+        ];
         for (delta_rank, delta_file) in knight_jumps {
             let tr = rank as isize + delta_rank;
             let tf = file as isize + delta_file;
@@ -555,18 +594,27 @@ impl Board {
         }
 
         // 3. Verificamos REY (adyacente)
-        let king_moves = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)];
+        let king_moves = [
+            (-1, -1),
+            (-1, 0),
+            (-1, 1),
+            (0, -1),
+            (0, 1),
+            (1, -1),
+            (1, 0),
+            (1, 1),
+        ];
         for (delta_rank, delta_file) in king_moves {
-             let tr = rank as isize + delta_rank;
-             let tf = file as isize + delta_file;
-             if tr >= 0 && tr < 8 && tf >= 0 && tf < 8 {
-                 let idx = self.coord_to_index(tr as usize, tf as usize);
-                 if let Some(piece) = self.squares[idx] {
-                     if piece.color == attacker && piece.piece_type == PieceType::King {
-                         return true;
-                     }
-                 }
-             }
+            let tr = rank as isize + delta_rank;
+            let tf = file as isize + delta_file;
+            if tr >= 0 && tr < 8 && tf >= 0 && tf < 8 {
+                let idx = self.coord_to_index(tr as usize, tf as usize);
+                if let Some(piece) = self.squares[idx] {
+                    if piece.color == attacker && piece.piece_type == PieceType::King {
+                        return true;
+                    }
+                }
+            }
         }
 
         // 4. Verificamos PIEZAS DESLIZANTES (Torre/Reina y Alfil/Reina)
@@ -579,11 +627,14 @@ impl Board {
                 let idx = self.coord_to_index(tr as usize, tf as usize);
                 match self.squares[idx] {
                     Some(piece) => {
-                        if piece.color == attacker && (piece.piece_type == PieceType::Rook || piece.piece_type == PieceType::Queen) {
+                        if piece.color == attacker
+                            && (piece.piece_type == PieceType::Rook
+                                || piece.piece_type == PieceType::Queen)
+                        {
                             return true;
                         }
                         break; // Bloqueado por cualquier pieza
-                    },
+                    }
                     None => {} // Sigue buscando
                 }
                 tr += delta_rank;
@@ -600,11 +651,14 @@ impl Board {
                 let idx = self.coord_to_index(tr as usize, tf as usize);
                 match self.squares[idx] {
                     Some(piece) => {
-                        if piece.color == attacker && (piece.piece_type == PieceType::Bishop || piece.piece_type == PieceType::Queen) {
+                        if piece.color == attacker
+                            && (piece.piece_type == PieceType::Bishop
+                                || piece.piece_type == PieceType::Queen)
+                        {
                             return true;
                         }
                         break;
-                    },
+                    }
                     None => {}
                 }
                 tr += delta_rank;
@@ -617,7 +671,9 @@ impl Board {
 
     fn parse_move_string(&self, move_str: &str) -> Option<Move> {
         let bytes = move_str.as_bytes();
-        if bytes.len() < 4 { return None; }
+        if bytes.len() < 4 {
+            return None;
+        }
 
         let from_file = (bytes[0] as char).to_ascii_lowercase() as u8;
         let from_rank = bytes[1];
@@ -660,8 +716,8 @@ impl Board {
 
         for legal_move in legal_moves {
             if legal_move.from == parsed_move.from
-               && legal_move.to == parsed_move.to
-               && legal_move.promotion == parsed_move.promotion
+                && legal_move.to == parsed_move.to
+                && legal_move.promotion == parsed_move.promotion
             {
                 return Some(legal_move);
             }
@@ -722,11 +778,9 @@ impl Board {
             let nodes = board_copy.perft(depth - 1);
 
             // Imprimimos en formato "e2e4: 20"
-            println!("{}: {}",
-                format!("{}{}",
-                    Board::index_to_coord_algebraic(m.from),
-                    Board::index_to_coord_algebraic(m.to)
-                ),
+            println!(
+                "{}: {}",
+                m.to_string(),
                 nodes
             );
             total_nodes += nodes;

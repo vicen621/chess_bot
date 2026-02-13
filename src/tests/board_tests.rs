@@ -47,7 +47,10 @@ fn test_fen_parsing_custom() {
         board.get_at_square(square("e4")).unwrap().piece_type,
         PieceType::Rook
     );
-    assert_eq!(board.get_at_square(square("e4")).unwrap().color, Color::White);
+    assert_eq!(
+        board.get_at_square(square("e4")).unwrap().color,
+        Color::White
+    );
     assert!(board.get_at_square(square("a1")).is_none());
 }
 
@@ -336,11 +339,16 @@ fn test_pawn_promotion_generation() {
 
     // Debería haber 4 movimientos posibles desde a7 a a8
     // Uno para cada tipo de promoción (Q, R, B, N)
-    let promotions: Vec<&Move> = moves.iter()
+    let promotions: Vec<&Move> = moves
+        .iter()
         .filter(|m| m.from == square("a7") && m.to == square("a8"))
         .collect();
 
-    assert_eq!(promotions.len(), 4, "Debería haber 4 opciones de coronación");
+    assert_eq!(
+        promotions.len(),
+        4,
+        "Debería haber 4 opciones de coronación"
+    );
 
     // Verificamos que existan los tipos específicos (si implementaste el campo promotion)
     // Nota: Ajusta esto según cómo hayas llamado al campo en tu struct Move
@@ -358,11 +366,16 @@ fn test_pawn_promotion_capture() {
     let board = Board::from_fen("r7/1P6/8/8/8/8/8/8 w - - 0 1").unwrap();
     let moves = board.generate_moves();
 
-    let captures: Vec<&Move> = moves.iter()
+    let captures: Vec<&Move> = moves
+        .iter()
         .filter(|m| m.from == square("b7") && m.to == square("a8"))
         .collect();
 
-    assert_eq!(captures.len(), 4, "Debería haber 4 formas de capturar coronando");
+    assert_eq!(
+        captures.len(),
+        4,
+        "Debería haber 4 formas de capturar coronando"
+    );
 }
 
 #[test]
@@ -375,9 +388,16 @@ fn test_make_move_promotion() {
     board.make_move(&m);
 
     let piece = board.get_at_square(square("a8")).unwrap();
-    assert_eq!(piece.piece_type, PieceType::Queen, "El peón debería ser ahora una Reina");
+    assert_eq!(
+        piece.piece_type,
+        PieceType::Queen,
+        "El peón debería ser ahora una Reina"
+    );
     assert_eq!(piece.color, Color::White);
-    assert!(board.get_at_square(square("a7")).is_none(), "La casilla original debe estar vacía");
+    assert!(
+        board.get_at_square(square("a7")).is_none(),
+        "La casilla original debe estar vacía"
+    );
 }
 
 // --- TESTS DE EN PASSANT ---
@@ -387,11 +407,15 @@ fn test_en_passant_opportunity() {
     // Situación: Peón blanco en e5. Peón negro acaba de mover d7-d5.
     // El FEN marca "d6" como casilla objetivo de en passant.
     // FEN: rnbqkbnr/ppp1pppp/8/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 1
-    let board = Board::from_fen("rnbqkbnr/ppp1pppp/8/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 1").unwrap();
+    let board =
+        Board::from_fen("rnbqkbnr/ppp1pppp/8/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 1").unwrap();
     let moves = board.generate_moves();
 
     // Debe existir el movimiento e5 -> d6 (captura al paso)
-    assert!(contains_move(&moves, "e5", "d6"), "El generador no detectó la captura al paso");
+    assert!(
+        contains_move(&moves, "e5", "d6"),
+        "El generador no detectó la captura al paso"
+    );
 }
 
 #[test]
@@ -407,32 +431,44 @@ fn test_make_move_en_passant_removes_pawn() {
     board.make_move(&ep_move);
 
     // 1. El peón blanco debe estar en d6
-    assert_eq!(board.get_at_square(square("d6")).unwrap().piece_type, PieceType::Pawn);
+    assert_eq!(
+        board.get_at_square(square("d6")).unwrap().piece_type,
+        PieceType::Pawn
+    );
 
     // 2. La casilla e5 debe estar vacía
     assert!(board.get_at_square(square("e5")).is_none());
 
     // 3. CRÍTICO: El peón negro en d5 (el capturado) debe haber DESAPARECIDO
-    assert!(board.get_at_square(square("d5")).is_none(), "El peón capturado al paso NO fue eliminado del tablero");
+    assert!(
+        board.get_at_square(square("d5")).is_none(),
+        "El peón capturado al paso NO fue eliminado del tablero"
+    );
 }
 
 #[test]
 fn test_double_push_sets_en_passant_target() {
     // Verificar que si muevo un peón 2 pasos, se setea la bandera para el siguiente turno
-    let mut board = Board::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
+    let mut board =
+        Board::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
 
     // Movemos e2 -> e4
     let m = Move::new(square("e2"), square("e4"));
     board.make_move(&m);
 
     // El target debe ser e3
-    assert_eq!(board.en_passant_target, Some(square("e3")), "Mover e2-e4 debería activar e3 como target");
+    assert_eq!(
+        board.en_passant_target,
+        Some(square("e3")),
+        "Mover e2-e4 debería activar e3 como target"
+    );
 }
 
 #[test]
 fn test_en_passant_rights_expire() {
     // Si hago una jugada que no es capturar al paso, el derecho debe desaparecer.
-    let mut board = Board::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
+    let mut board =
+        Board::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
 
     // 1. Blanco mueve e2-e4 (Activa target e3)
     board.make_move(&Move::new(square("e2"), square("e4")));
@@ -442,7 +478,10 @@ fn test_en_passant_rights_expire() {
     // Al terminar este turno, el target e3 debe limpiarse porque nadie lo aprovechó.
     board.make_move(&Move::new(square("h7"), square("h6")));
 
-    assert_eq!(board.en_passant_target, None, "El derecho de en passant debe expirar tras un turno");
+    assert_eq!(
+        board.en_passant_target, None,
+        "El derecho de en passant debe expirar tras un turno"
+    );
 }
 
 // --- TESTS DE ENROQUE (CASTLING) ---
@@ -455,7 +494,10 @@ fn test_castling_white_short_legal() {
     let moves = board.generate_moves();
 
     // Debe existir el movimiento e1 -> g1
-    assert!(contains_move(&moves, "e1", "g1"), "El enroque corto blanco debería ser legal");
+    assert!(
+        contains_move(&moves, "e1", "g1"),
+        "El enroque corto blanco debería ser legal"
+    );
 }
 
 #[test]
@@ -466,16 +508,23 @@ fn test_castling_black_long_legal() {
     let moves = board.generate_moves();
 
     // Debe existir el movimiento e8 -> c8
-    assert!(contains_move(&moves, "e8", "c8"), "El enroque largo negro debería ser legal");
+    assert!(
+        contains_move(&moves, "e8", "c8"),
+        "El enroque largo negro debería ser legal"
+    );
 }
 
 #[test]
 fn test_castling_blocked() {
     // FEN: Alfil blanco en f1 bloquea el enroque corto.
-    let board = Board::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKB1R w KQkq - 0 1").unwrap();
+    let board =
+        Board::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKB1R w KQkq - 0 1").unwrap();
     let moves = board.generate_moves();
 
-    assert!(!contains_move(&moves, "e1", "g1"), "No se puede enrocar si hay piezas en el medio");
+    assert!(
+        !contains_move(&moves, "e1", "g1"),
+        "No se puede enrocar si hay piezas en el medio"
+    );
 }
 
 #[test]
@@ -485,7 +534,10 @@ fn test_castling_cant_escape_check() {
     let board = Board::from_fen("4r3/8/8/8/8/8/8/4K2R w K - 0 1").unwrap();
     let moves = board.generate_moves();
 
-    assert!(!contains_move(&moves, "e1", "g1"), "No se puede enrocar estando en jaque");
+    assert!(
+        !contains_move(&moves, "e1", "g1"),
+        "No se puede enrocar estando en jaque"
+    );
 }
 
 #[test]
@@ -496,7 +548,10 @@ fn test_castling_through_check() {
     let board = Board::from_fen("5r2/8/8/8/8/8/8/4K2R w K - 0 1").unwrap();
     let moves = board.generate_moves();
 
-    assert!(!contains_move(&moves, "e1", "g1"), "No se puede enrocar pasando por una casilla atacada (f1)");
+    assert!(
+        !contains_move(&moves, "e1", "g1"),
+        "No se puede enrocar pasando por una casilla atacada (f1)"
+    );
 }
 
 #[test]
@@ -514,25 +569,42 @@ fn test_castling_rights_lost_after_king_move() {
 
     // 4. Intentamos enrocar de nuevo. No debería dejarme.
     let moves = board.generate_moves();
-    assert!(!contains_move(&moves, "e1", "g1"), "Perdiste el derecho al mover el rey");
-    assert!(!contains_move(&moves, "e1", "c1"), "Perdiste el derecho al mover el rey");
+    assert!(
+        !contains_move(&moves, "e1", "g1"),
+        "Perdiste el derecho al mover el rey"
+    );
+    assert!(
+        !contains_move(&moves, "e1", "c1"),
+        "Perdiste el derecho al mover el rey"
+    );
 }
 
 #[test]
 fn test_make_move_castling_moves_rook() {
     // Enroque corto blanco
-    let mut board = Board::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQK2R w KQkq - 0 1").unwrap();
+    let mut board =
+        Board::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQK2R w KQkq - 0 1").unwrap();
 
     // Ejecutamos e1 -> g1
     let castling_move = Move::new(square("e1"), square("g1"));
     board.make_move(&castling_move);
 
     // 1. El rey debe estar en g1
-    assert_eq!(board.get_at_square(square("g1")).unwrap().piece_type, PieceType::King);
+    assert_eq!(
+        board.get_at_square(square("g1")).unwrap().piece_type,
+        PieceType::King
+    );
 
     // 2. LA TORRE debe haberse teletransportado de h1 a f1
-    assert!(board.get_at_square(square("h1")).is_none(), "La torre debe salir de h1");
-    assert_eq!(board.get_at_square(square("f1")).unwrap().piece_type, PieceType::Rook, "La torre debe aparecer en f1");
+    assert!(
+        board.get_at_square(square("h1")).is_none(),
+        "La torre debe salir de h1"
+    );
+    assert_eq!(
+        board.get_at_square(square("f1")).unwrap().piece_type,
+        PieceType::Rook,
+        "La torre debe aparecer en f1"
+    );
 }
 
 // --- TESTS DE ACTUALIZACIÓN DE DERECHOS (CASTLING RIGHTS) ---
@@ -542,21 +614,32 @@ fn test_king_move_removes_both_rights() {
     // 1. Empezamos con todos los derechos ("KQkq")
     // FEN inicial estándar
     let mut board = Board::initial_position();
-    assert_eq!(board.castling_rights, CastlingRights::new(true, true, true, true));
+    assert_eq!(
+        board.castling_rights,
+        CastlingRights::new(true, true, true, true)
+    );
 
     // 2. Movemos el Rey Blanco (e1 -> e2)
     let move_king = Move::new(square("e1"), square("e2"));
     board.make_move(&move_king);
 
     // 3. El blanco debería haber perdido K y Q. El negro conserva k y q.
-    assert_eq!(board.castling_rights, CastlingRights::new(false, false, true, true), "Mover el rey blanco debe eliminar 'K' y 'Q'");
+    assert_eq!(
+        board.castling_rights,
+        CastlingRights::new(false, false, true, true),
+        "Mover el rey blanco debe eliminar 'K' y 'Q'"
+    );
 
     // 4. Movemos el Rey Negro (e8 -> e7)
     let move_black_king = Move::new(square("e8"), square("e7"));
     board.make_move(&move_black_king);
 
     // 5. Ahora nadie debería tener derechos..
-    assert_eq!(board.castling_rights, CastlingRights::default(), "Mover el rey negro debe eliminar 'k' y 'q'");
+    assert_eq!(
+        board.castling_rights,
+        CastlingRights::default(),
+        "Mover el rey negro debe eliminar 'k' y 'q'"
+    );
 }
 
 #[test]
@@ -569,7 +652,11 @@ fn test_rook_move_removes_specific_right() {
     let move_rook_h1 = Move::new(square("h1"), square("h2"));
     board.make_move(&move_rook_h1);
 
-    assert_eq!(board.castling_rights, CastlingRights::new(false, true, true, true), "Mover torre h1 debe eliminar solo 'K'");
+    assert_eq!(
+        board.castling_rights,
+        CastlingRights::new(false, true, true, true),
+        "Mover torre h1 debe eliminar solo 'K'"
+    );
 
     // 3. Movemos la Torre Negra del lado de Dama (a8 -> a7)
     // Turno negro (se hace un movimiento dummy blanco para cambiar turno o forzamos el turno si es necesario,
@@ -580,7 +667,11 @@ fn test_rook_move_removes_specific_right() {
     board.make_move(&move_rook_a8);
 
     // Debería quedar "Qk" (Se fue 'K' antes, ahora se va 'q').
-    assert_eq!(board.castling_rights, CastlingRights::new(false, true, true, false), "Mover torre a8 debe eliminar solo 'q'");
+    assert_eq!(
+        board.castling_rights,
+        CastlingRights::new(false, true, true, false),
+        "Mover torre a8 debe eliminar solo 'q'"
+    );
 }
 
 #[test]
@@ -601,7 +692,10 @@ fn test_rook_capture_removes_opponent_right() {
 
     // EL BLANCO DEBE PERDER EL DERECHO 'K' AUNQUE NO HAYA MOVIDO SU TORRE
     // (Porque ya no tiene torre en h1 para enrocar)
-    assert!(!board.castling_rights.white_kingside, "Si te comen la torre de h1, pierdes el derecho 'K'");
+    assert!(
+        !board.castling_rights.white_kingside,
+        "Si te comen la torre de h1, pierdes el derecho 'K'"
+    );
 
     // Los otros derechos deben seguir intactos
     assert!(board.castling_rights.white_queenside);
@@ -617,7 +711,9 @@ fn test_uci_parse_valid_move() {
 
     // Caso simple: Peón de rey
     let move_str = "e2e4";
-    let m = board.parse_move(move_str).expect("Debería parsear e2e4 correctamente");
+    let m = board
+        .parse_move(move_str)
+        .expect("Debería parsear e2e4 correctamente");
 
     // Verificamos índices
     // e2 es 12, e4 es 28
@@ -633,7 +729,10 @@ fn test_uci_parse_invalid_move_logic() {
     // Sintaxis válida ("a1a8"), pero movimiento ILEGAL (Torre bloqueada)
     // parse_move DEBE devolver None
     let move_str = "a1a8";
-    assert!(board.parse_move(move_str).is_none(), "No debería aceptar movimientos ilegales aunque el texto sea válido");
+    assert!(
+        board.parse_move(move_str).is_none(),
+        "No debería aceptar movimientos ilegales aunque el texto sea válido"
+    );
 }
 
 #[test]
@@ -642,8 +741,8 @@ fn test_uci_parse_garbage_input() {
 
     assert!(board.parse_move("e2e5").is_none()); // Ilegal (peón salta 3)
     assert!(board.parse_move("perro").is_none()); // Basura
-    assert!(board.parse_move("").is_none());      // Vacío
-    assert!(board.parse_move("e2e").is_none());   // Incompleto
+    assert!(board.parse_move("").is_none()); // Vacío
+    assert!(board.parse_move("e2e").is_none()); // Incompleto
 }
 
 #[test]
@@ -660,7 +759,10 @@ fn test_uci_parse_promotion() {
     assert_eq!(m_knight.promotion, Some(PieceType::Knight));
 
     // Caso 3: Sin especificar pieza de promoción (UCI inválido para promoción)
-    assert!(board.parse_move("a7a8").is_none(), "UCI requiere letra de promoción");
+    assert!(
+        board.parse_move("a7a8").is_none(),
+        "UCI requiere letra de promoción"
+    );
 }
 
 #[test]
@@ -668,7 +770,9 @@ fn test_uci_parse_castling_notation() {
     // FEN: Posición lista para enroque corto blanco
     let board = Board::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQK2R w KQkq - 0 1").unwrap();
 
-    let m = board.parse_move("e1g1").expect("Debería entender e1g1 como enroque");
+    let m = board
+        .parse_move("e1g1")
+        .expect("Debería entender e1g1 como enroque");
 
     assert_eq!(m.from, square("e1"));
     assert_eq!(m.to, square("g1"));
@@ -684,7 +788,8 @@ fn test_uci_position_sequence() {
 
     for move_str in moves_to_play {
         // 1. Parseamos
-        let m = board.parse_move(move_str)
+        let m = board
+            .parse_move(move_str)
             .unwrap_or_else(|| panic!("Falló al parsear el movimiento: {}", move_str));
 
         // 2. Aplicamos
@@ -697,12 +802,16 @@ fn test_uci_position_sequence() {
     assert_eq!(board.turn, Color::Black);
 
     // B. El alfil blanco debe estar en c4
-    let bishop = board.get_at_square(square("c4")).expect("Debería haber un alfil en c4");
+    let bishop = board
+        .get_at_square(square("c4"))
+        .expect("Debería haber un alfil en c4");
     assert_eq!(bishop.piece_type, PieceType::Bishop);
     assert_eq!(bishop.color, Color::White);
 
     // C. El caballo negro debe estar en c6
-    let knight = board.get_at_square(square("c6")).expect("Debería haber un caballo en c6");
+    let knight = board
+        .get_at_square(square("c6"))
+        .expect("Debería haber un caballo en c6");
     assert_eq!(knight.piece_type, PieceType::Knight);
 }
 
@@ -736,7 +845,10 @@ fn test_to_fen_round_trip_complex() {
     let board = Board::from_fen(original_fen).expect("Debería parsear el FEN complejo");
     let generated_fen = board.to_fen();
 
-    assert_eq!(generated_fen, original_fen, "El ciclo FEN -> Board -> FEN falló en posición compleja");
+    assert_eq!(
+        generated_fen, original_fen,
+        "El ciclo FEN -> Board -> FEN falló en posición compleja"
+    );
 }
 
 #[test]

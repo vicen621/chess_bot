@@ -1,4 +1,24 @@
+use std::fmt;
+
 pub type Square = usize; // 0-63 representing squares on the chessboard
+
+const A_FILE: Square = 0;
+const B_FILE: Square = 1;
+const C_FILE: Square = 2;
+const D_FILE: Square = 3;
+const E_FILE: Square = 4;
+const F_FILE: Square = 5;
+const G_FILE: Square = 6;
+const H_FILE: Square = 7;
+
+const RANK_1: Square = 0;
+const RANK_2: Square = 1;
+const RANK_3: Square = 2;
+const RANK_4: Square = 3;
+const RANK_5: Square = 4;
+const RANK_6: Square = 5;
+const RANK_7: Square = 6;
+const RANK_8: Square = 7;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Color {
@@ -53,7 +73,11 @@ pub struct Move {
 
 impl Move {
     pub fn new(from: Square, to: Square) -> Self {
-        Move { from, to, promotion: None }
+        Move {
+            from,
+            to,
+            promotion: None,
+        }
     }
 
     pub fn with_promotion(from: Square, to: Square, promotion: PieceType) -> Self {
@@ -62,6 +86,24 @@ impl Move {
             to,
             promotion: Some(promotion),
         }
+    }
+}
+
+impl fmt::Display for Move {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}{}{}",
+            Board::index_to_coord_algebraic(self.from),
+            Board::index_to_coord_algebraic(self.to),
+            match self.promotion {
+                Some(PieceType::Queen) => "q",
+                Some(PieceType::Rook) => "r",
+                Some(PieceType::Bishop) => "b",
+                Some(PieceType::Knight) => "n",
+                _ => "",
+            }
+        )
     }
 }
 

@@ -1,10 +1,17 @@
 #[allow(dead_code)]
 mod board;
 #[allow(dead_code)]
+mod evaluation;
+#[allow(dead_code)]
+mod search;
+#[allow(dead_code)]
 mod types;
 
-use std::{fs::OpenOptions, io::{self, BufRead, Write}};
 use crate::types::Board;
+use std::{
+    fs::OpenOptions,
+    io::{self, BufRead, Write},
+};
 
 fn main() {
     let stdin = io::stdin();
@@ -46,7 +53,12 @@ fn main() {
                                         board.make_move(&chess_move);
                                     }
                                     None => {
-                                        let error_msg = format!("ERROR CRÍTICO: Falló al parsear el movimiento en position startpos'{}' (turno {}). FEN actual: {}", mv, i+1, board.to_fen());
+                                        let error_msg = format!(
+                                            "ERROR CRÍTICO: Falló al parsear el movimiento en position startpos'{}' (turno {}). FEN actual: {}",
+                                            mv,
+                                            i + 1,
+                                            board.to_fen()
+                                        );
                                         log_to_file(&error_msg);
                                         break;
                                     }
@@ -74,7 +86,10 @@ fn main() {
                                 }
                             }
                             Err(e) => {
-                                log_to_file(&format!("ERROR CRÍTICO AL CARGAR POSITION FEN: {}", e)) ;
+                                log_to_file(&format!(
+                                    "ERROR CRÍTICO AL CARGAR POSITION FEN: {}",
+                                    e
+                                ));
                                 log_to_file(&format!("FEN INTENTADO: {}", fen_str));
                             }
                         }
@@ -104,15 +119,7 @@ fn main() {
 fn get_best_move_placeholder(board: &Board) -> String {
     let moves = board.generate_moves();
     if let Some(m) = moves.first() {
-        format!(
-            "{}{}{}",
-            Board::index_to_coord_algebraic(m.from),
-            Board::index_to_coord_algebraic(m.to),
-            match m.promotion {
-                Some(crate::types::PieceType::Queen) => "q",
-                _ => "",
-            }
-        )
+        m.to_string()
     } else {
         "0000".to_string() // Null move si no hay movimientos (Mate/Ahogado)
     }
