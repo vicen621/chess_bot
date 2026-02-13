@@ -7,7 +7,7 @@ mod search;
 #[allow(dead_code)]
 mod types;
 
-use crate::types::Board;
+use crate::{search::search_best_move, types::Board};
 use std::{
     fs::OpenOptions,
     io::{self, BufRead, Write},
@@ -98,10 +98,14 @@ fn main() {
                 }
             }
             "go" => {
-                // Aca va la logica para calcular el mejor movimiento.
-                // Por ahora, devuelvo un movimiento  aleatorio.
-                let best_move = get_best_move_placeholder(&board);
-                println!("bestmove {}", best_move);
+                let best_move = search_best_move(&board, 8); // Profundidad de búsqueda fija
+
+                let best_move_str = match best_move {
+                    Some(mv) => mv.to_string(),
+                    None => "0000".to_string(), // Movimiento nulo si no se encuentra ninguno
+                };
+
+                println!("bestmove {}", best_move_str);
             }
             "quit" => {
                 break;
@@ -112,16 +116,6 @@ fn main() {
             }
             _ => {}
         }
-    }
-}
-
-// Función temporal hasta que implemente un motor real
-fn get_best_move_placeholder(board: &Board) -> String {
-    let moves = board.generate_moves();
-    if let Some(m) = moves.first() {
-        m.to_string()
-    } else {
-        "0000".to_string() // Null move si no hay movimientos (Mate/Ahogado)
     }
 }
 
@@ -141,5 +135,6 @@ fn log_to_file(msg: &str) {
 #[cfg(test)]
 mod tests {
     mod board_tests;
+    mod search_tests;
     mod types_tests;
 }
