@@ -98,7 +98,7 @@ fn main() {
                 }
             }
             "go" => {
-                let best_move = search_best_move(&board, 8); // Profundidad de búsqueda fija
+                let best_move = search_best_move(&board, 4); // Profundidad de búsqueda fija
 
                 let best_move_str = match best_move {
                     Some(mv) => mv.to_string(),
